@@ -1,0 +1,255 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/posts": {
+      "post": {
+        "operationId": "PostsController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Posts"
+        ]
+      }
+    },
+    "/v1/generator/image-of-service": {
+      "post": {
+        "operationId": "GeneratorController_generateImageOfService_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateImageOfServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Generator"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "GBP AI GOOGLE API",
+    "description": "Plataforma de API inteligente para soluciones empresariales",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Soporte GBP AI",
+      "url": "https://www.gbpai.com/soporte",
+      "email": "soporte@gbpai.com"
+    },
+    "license": {
+      "name": "Licencia Empresarial",
+      "url": "https://www.gbpai.com/licencia"
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Endpoints de autenticación segura"
+    },
+    {
+      "name": "Users",
+      "description": "Gestión avanzada de usuarios"
+    },
+    {
+      "name": "Products",
+      "description": "Operaciones inteligentes de productos"
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://api.gbpai.com/v1",
+      "description": "Servidor de Producción"
+    },
+    {
+      "url": "https://dev-api.gbpai.com/v1",
+      "description": "Servidor de Desarrollo"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "JWT-auth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "in": "header",
+        "name": "Authorization"
+      },
+      "API-KEY-auth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-KEY"
+      }
+    },
+    "schemas": {
+      "CreatePostDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content of the post",
+            "example": "This is a sample post"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "prompt to generate the image of the post",
+            "example": "A modern, minimalist coffee shop interior with wooden furniture, soft ambient lighting, and a cozy atmosphere, designed for business meetings and remote work. High-quality product showcase with fresh coffee beans and pastries on the counter. No people present, clean and realistic composition."
+          },
+          "pageId": {
+            "type": "string",
+            "description": "ID of the page where the post will be published",
+            "example": "123456789"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "Access token for authentication",
+            "example": "EAABsbCS1i..."
+          },
+          "publishToFacebook": {
+            "type": "boolean",
+            "description": "Indicates if the post should be published on Facebook",
+            "example": true
+          },
+          "publishNow": {
+            "type": "boolean",
+            "description": "Indicates if the post should be published on Facebook Now",
+            "example": true
+          },
+          "scheduledPublishTime": {
+            "type": "string",
+            "description": "If publishNow is false, this field should contain the scheduled publish time in unix timestamp format",
+            "example": 1893456000
+          },
+          "publishToInstagram": {
+            "type": "boolean",
+            "description": "Indicates if the post should be published on Instagram",
+            "example": false
+          }
+        },
+        "required": [
+          "content",
+          "prompt",
+          "pageId",
+          "accessToken",
+          "publishToFacebook",
+          "publishNow",
+          "scheduledPublishTime",
+          "publishToInstagram"
+        ]
+      },
+      "GenerateImageOfServiceDto": {
+        "type": "object",
+        "properties": {
+          "businessType": {
+            "type": "string",
+            "description": "Business Type",
+            "example": "Installation & Repair Company"
+          },
+          "mainService": {
+            "type": "string",
+            "description": "Main Service",
+            "example": "Professional Installation and Repair Services"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country",
+            "example": "USA"
+          },
+          "styleImage": {
+            "type": "string",
+            "description": "Image Composition Guidelines: Style of the image",
+            "example": "Technical and Professional"
+          },
+          "mood": {
+            "type": "string",
+            "description": "Image Composition Guidelines: Mood",
+            "example": "Trustworthy, Reliable, Competent",
+            "default": "Trustworthy, Reliable, Competent"
+          },
+          "key_elements": {
+            "type": "string",
+            "description": "Key Elements to Include",
+            "example": "Technicians working on installations, tools and equipment, service vehicles"
+          },
+          "aesthetic_lighting": {
+            "type": "string",
+            "description": "Preferred Aesthetic: Lighting",
+            "example": "Bright worksite Lighting"
+          },
+          "aesthetic_perspective": {
+            "type": "string",
+            "description": "Preferred Aesthetic: Perspective",
+            "example": "Wide shot showing team at work"
+          },
+          "aesthetic_color_palette": {
+            "type": "string",
+            "description": "Preferred Aesthetic: Color Palette",
+            "example": "Bright and Professional"
+          },
+          "aesthetic_texture_details": {
+            "type": "string",
+            "description": "Preferred Aesthetic: Texture and Details",
+            "example": "Smooth and polished surfaces"
+          },
+          "additional_context": {
+            "type": "string",
+            "description": "Additional Context to put in te image  Composition",
+            "example": "Branded uniforms, modern equipment, clean work environment"
+          },
+          "numberOfImages": {
+            "type": "number",
+            "description": "Number of images to generate",
+            "example": 1
+          },
+          "size": {
+            "type": "string",
+            "description": "Size of the image",
+            "example": "1024x1024",
+            "enum": [
+              "1024x1024",
+              "1792x1024",
+              "1024x1792"
+            ]
+          }
+        },
+        "required": [
+          "businessType",
+          "mainService",
+          "country",
+          "styleImage",
+          "mood",
+          "key_elements",
+          "aesthetic_lighting",
+          "aesthetic_perspective",
+          "aesthetic_color_palette",
+          "aesthetic_texture_details",
+          "additional_context",
+          "numberOfImages",
+          "size"
+        ]
+      }
+    }
+  }
+}
