@@ -82,41 +82,45 @@ export class GrokService implements IIAGeneratorRepository {
     }
   }
 
-  async generateImage(prompt: string, number_images: number, size: SIZE_OPTIONS): Promise<string> {
-    if (!this.apiKey) {
-      throw new Error('Grok API key is not set in environment variables.');
+  async generateImage(prompt: string, number_images: number): Promise<string> {
+    try {
+      if (!this.apiKey) {
+        throw new Error('Grok API key is not set in environment variables.');
+      }
+
+      const response = await fetch('https://api.x.ai/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          prompt,
+          n: number_images,
+          response_format: 'url',
+          model: this.model,
+        }),
+      });
+
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        const error = data;
+        throw new Error(`Grok API error: ${error.error.message}`);
+      }
+
+      // Get image URL and download/crop
+      const imageUrl = data.data[0]?.url;
+      if (!imageUrl) {
+        throw new Error('No image URL received from Grok API');
+      }
+
+      // Download and crop image, return local path
+      return this.downloadAndCropImage(imageUrl);
+    } catch (error) {
+      console.error('Error generating image:', error);
+      throw new Error(`Failed to generate image: ${error.message}`);
     }
-
-    console.log(prompt);
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        prompt,
-        n: number_images,
-        response_format: 'url',
-        model: this.model,
-      }),
-    });
-
-    const data = await response.json();
-    console.log(data);
-
-    if (!response.ok) {
-      const error = data;
-      throw new Error(`Grok API error: ${error.error.message}`);
-    }
-
-    // Get image URL and download/crop
-    const imageUrl = data.data[0]?.url;
-    if (!imageUrl) {
-      throw new Error('No image URL received from Grok API');
-    }
-
-    // Download and crop image, return local path
-    return this.downloadAndCropImage(imageUrl);
   }
 }

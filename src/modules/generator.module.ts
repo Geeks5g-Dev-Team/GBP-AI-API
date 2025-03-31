@@ -1,9 +1,9 @@
+import { Storage } from '@google-cloud/storage';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import OpenAI from 'openai';
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
+import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
-import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GeneratorController } from 'src/presentation/controllers/generator.controller';
 
 @Module({
@@ -13,16 +13,7 @@ import { GeneratorController } from 'src/presentation/controllers/generator.cont
     // OpenAiService,
     GenerateImageOfServiceUseCase,
     GrokService,
-    // {
-    //   provide: OpenAI,
-    //   useFactory: (configService: ConfigService) => {
-    //     const apiKey = configService.get<string>('OPENAI_API_KEY');
-    //     return new OpenAI({
-    //       apiKey: apiKey,
-    //     });
-    //   },
-    //   inject: [ConfigService],
-    // },
+    GoogleStorageService,
     {
       provide: GrokService,
       useFactory: (configService: ConfigService) => {
@@ -34,14 +25,25 @@ import { GeneratorController } from 'src/presentation/controllers/generator.cont
       },
       inject: [ConfigService],
     },
-    // {
-    //   provide: OpenAiService,
-    //   useFactory: (openAi: OpenAI) => {
-    //     return new OpenAiService(openAi);
-    //   },
-    //   inject: [OpenAI],
-    // },
+    {
+      provide: GoogleStorageService,
+      useFactory: (configService: ConfigService) => {
+        const googleCredentials = configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
+        const bucketName = configService.get<string>('GOOGLE_BUCKET_NAME');
+        if (!googleCredentials) {
+          throw new Error('GOOGLE_APPLICATION_CREDENTIALS is not defined');
+        }
+        if (!bucketName) {
+          throw new Error('GOOGLE_BUCKET_NAME is not defined');
+        }
+        const storage = new Storage({
+          keyFile: googleCredentials,
+        });
+        return new GoogleStorageService(storage, bucketName);
+      },
+      inject: [ConfigService],
+    },
   ],
-  exports: [GrokService],
+  exports: [GrokService, GoogleStorageService],
 })
 export class GeneratorModule {}

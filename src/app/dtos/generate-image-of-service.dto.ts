@@ -3,6 +3,11 @@ import { IsString, IsNotEmpty, Min, IsNumber, IsEnum } from 'class-validator';
 import { SIZE_OPTIONS } from 'src/domain/interfaces/IAGenerator.repository';
 
 export class GenerateImageOfServiceDto {
+  @ApiProperty({ description: 'Service name', example: 'Installation & Repair Company' })
+  @IsString()
+  @IsNotEmpty()
+  serviceName: string;
+
   @ApiProperty({ description: 'Business Type', example: 'Installation & Repair Company' })
   @IsString()
   @IsNotEmpty()

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsBoolean, IsNotEmpty, IsOptional } from 'class-validator';
+import { GenerateImageOfServiceDto } from './generate-image-of-service.dto';
 
 export class CreatePostDto {
   @ApiProperty({ description: 'Content of the post', example: 'This is a sample post' })
@@ -58,4 +59,25 @@ export class CreatePostDto {
   })
   @IsBoolean()
   publishToInstagram: boolean;
+
+  @ApiProperty({ description: 'Company Name', example: 'Tech Solutions Inc.' })
+  @IsString()
+  @IsNotEmpty()
+  companyName: string;
+
+  @ApiProperty({ description: 'Service Name', example: 'Installation & Repair Company' })
+  @IsString()
+  @IsNotEmpty()
+  serviceName: string;
+
+  // BOOLEAN TO GENERATE NEW IMAGE
+  @ApiProperty({ description: 'Indicates if a new image should be generated', example: true })
+  @IsBoolean()
+  @IsOptional()
+  generateNewImage: boolean;
+
+  // OBJECT TO GENERATE IMAGES
+  @ApiProperty({ type: GenerateImageOfServiceDto })
+  @IsOptional()
+  generateImageOfServiceDto?: GenerateImageOfServiceDto;
 }
