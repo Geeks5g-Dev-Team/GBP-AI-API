@@ -15,7 +15,9 @@ export class GenerateImageOfServiceUseCase {
     const { numberOfImages, companyName, serviceName } = data;
     const prompt = buildPromptFromTemplate(data);
     const imagePath = await this.generatorService.generateImage(prompt, numberOfImages);
-    const imageName = imagePath.split('\\').pop();
+    let imageName = imagePath.split('/').pop();
+    imageName = imageName?.split('\\').pop();
+
     const uploadPath = await this.storageService.upload({
       fileName: companyName + '/' + serviceName + '/' + imageName,
       filePath: imagePath,
