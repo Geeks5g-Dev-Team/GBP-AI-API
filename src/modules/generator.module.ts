@@ -1,17 +1,35 @@
 import { Storage } from '@google-cloud/storage';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MulterModule } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
+import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { GeneratorController } from 'src/presentation/controllers/generator.controller';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [
+    ConfigModule,
+    MulterModule.register({
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, callback) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          callback(null, `${uniqueSuffix}${ext}`);
+        },
+      }),
+    }),
+  ],
   controllers: [GeneratorController],
   providers: [
     // OpenAiService,
+
     GenerateImageOfServiceUseCase,
+    SaveImageUseCase,
     GrokService,
     GoogleStorageService,
     {

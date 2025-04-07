@@ -15,10 +15,10 @@ export class GoogleStorageService implements IStorageRepository {
   ) {}
   async upload(params: IStorageRepositoryUploadOptions): Promise<string> {
     try {
-      const { fileName, filePath } = params;
+      const { fileName, filePath, rootFolder } = params;
       const bucket = this.storage.bucket(this.bucketName);
       const result = await bucket.upload(filePath, {
-        destination: this.IMAGES_FOLDER + fileName.toLocaleLowerCase().replaceAll(' ', '_'),
+        destination: rootFolder + fileName.toLocaleLowerCase().replaceAll(' ', '_'),
         public: true,
         metadata: {
           contentType: 'image/jpg',
@@ -27,17 +27,17 @@ export class GoogleStorageService implements IStorageRepository {
       if (result[0].metadata.mediaLink === undefined) {
         throw new Error('File not found');
       }
-      return `https://storage.googleapis.com/${this.bucketName}/${this.IMAGES_FOLDER + fileName.toLocaleLowerCase().replaceAll(' ', '_')}`;
+      return `https://storage.googleapis.com/${this.bucketName}/${rootFolder + fileName.toLocaleLowerCase().replaceAll(' ', '_')}`;
     } catch (error) {
       console.error('Error uploading file to Google Cloud Storage:', error);
       throw new Error('Failed to upload file');
     }
   }
   async download(params: IStorageRepositoryDownloadOptions): Promise<string> {
-    const { fileName } = params;
+    const { fileName, rootFolder } = params;
     const bucket = this.storage.bucket(this.bucketName);
     const [files] = await bucket.getFiles({
-      prefix: this.IMAGES_FOLDER + fileName.toLocaleLowerCase().replaceAll(' ', '_'),
+      prefix: rootFolder + fileName.toLocaleLowerCase().replaceAll(' ', '_'),
     });
     if (files.length === 0) {
       throw new Error(`File "${fileName}" not found in bucket.`);
@@ -46,10 +46,10 @@ export class GoogleStorageService implements IStorageRepository {
   }
 
   async getImages(params: IStorageRepositoryGetImagesOptions): Promise<string[]> {
-    const { prefix } = params;
+    const { prefix, rootFolder } = params;
     const bucket = this.storage.bucket(this.bucketName);
     const [files] = await bucket.getFiles({
-      prefix: this.IMAGES_FOLDER + prefix.toLocaleLowerCase().replaceAll(' ', '_'),
+      prefix: rootFolder + prefix.toLocaleLowerCase().replaceAll(' ', '_'),
       // maxResults: limit,
     });
     if (files.length === 0) {
@@ -59,8 +59,8 @@ export class GoogleStorageService implements IStorageRepository {
   }
 
   async renameFile(params: IStorageRepositoryRenameFileOptions): Promise<void> {
-    const { fileName, newFileName } = params;
+    const { fileName, newFileName, rootFolder } = params;
     const bucket = this.storage.bucket(this.bucketName);
-    await bucket.file(fileName).rename(newFileName);
+    await bucket.file(rootFolder + fileName).rename(rootFolder + newFileName);
   }
 }

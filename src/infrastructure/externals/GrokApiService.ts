@@ -4,7 +4,7 @@ import * as sharp from 'sharp';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-import { IIAGeneratorRepository, SIZE_OPTIONS } from 'src/domain/interfaces/IAGenerator.repository';
+import { IIAGeneratorRepository } from 'src/domain/interfaces/IAGenerator.repository';
 
 export class GrokService implements IIAGeneratorRepository {
   model: string;
