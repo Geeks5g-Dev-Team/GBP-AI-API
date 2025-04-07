@@ -17,12 +17,11 @@ export class GenerateImageOfServiceUseCase {
     const imagePath = await this.generatorService.generateImage(prompt, numberOfImages);
     let imageName = imagePath.split('/').pop();
     imageName = imageName?.split('\\').pop();
-
     const uploadPath = await this.storageService.upload({
       fileName: companyName + '/' + serviceName + '/' + imageName,
       filePath: imagePath,
     });
-    console.log('FileName: ' + companyName.toLocaleLowerCase().replaceAll(' ', '_') + '/' + serviceName.toLocaleLowerCase().replaceAll(' ', '_') + '/' + imageName);
+    await this.generatorService.deleteImage(imagePath);
     return [imagePath, uploadPath];
   }
 }

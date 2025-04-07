@@ -48,12 +48,10 @@ export class GoogleStorageService implements IStorageRepository {
   async getImages(params: IStorageRepositoryGetImagesOptions): Promise<string[]> {
     const { prefix } = params;
     const bucket = this.storage.bucket(this.bucketName);
-    console.log('prefix:', this.IMAGES_FOLDER + prefix.toLocaleLowerCase().replaceAll(' ', '_'));
     const [files] = await bucket.getFiles({
       prefix: this.IMAGES_FOLDER + prefix.toLocaleLowerCase().replaceAll(' ', '_'),
       // maxResults: limit,
     });
-    console.log('files:', files);
     if (files.length === 0) {
       return [];
     }

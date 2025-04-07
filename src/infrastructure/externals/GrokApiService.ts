@@ -40,7 +40,7 @@ export class GrokService implements IIAGeneratorRepository {
    */
   private async downloadAndCropImage(imageUrl: string, cropHeight: number = 100): Promise<string> {
     // Generate unique filename
-    const filename = `${uuidv4()}.jpg`;
+    const filename = `${uuidv4()}_used.jpg`;
     const tempDownloadPath = path.join(this.downloadPath, `temp_${filename}`);
     const finalImagePath = path.join(this.downloadPath, filename);
 
@@ -103,8 +103,6 @@ export class GrokService implements IIAGeneratorRepository {
       });
 
       const data = await response.json();
-      console.log(data);
-
       if (!response.ok) {
         const error = data;
         throw new Error(`Grok API error: ${error.error.message}`);
@@ -121,6 +119,15 @@ export class GrokService implements IIAGeneratorRepository {
     } catch (error) {
       console.error('Error generating image:', error);
       throw new Error(`Failed to generate image: ${error.message}`);
+    }
+  }
+
+  async deleteImage(imagePath: string): Promise<void> {
+    try {
+      await fs.unlink(imagePath);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      throw new Error(`Failed to delete image: ${error.message}`);
     }
   }
 }

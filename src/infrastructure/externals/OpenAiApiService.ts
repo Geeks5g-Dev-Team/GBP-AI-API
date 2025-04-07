@@ -8,7 +8,6 @@ export class OpenAiService implements IIAGeneratorRepository {
   }
   async generateImage(prompt: string, number_images: number, size: SIZE_OPTIONS): Promise<string> {
     try {
-      console.log(prompt);
       const response = await this.openAi.images.generate({
         prompt,
         n: number_images,
@@ -24,7 +23,6 @@ export class OpenAiService implements IIAGeneratorRepository {
         console.error('Error response:', data);
         console.error('Error status:', status);
       }
-      console.log('Error:', error);
       throw new Error('Error:', error);
     }
   }
