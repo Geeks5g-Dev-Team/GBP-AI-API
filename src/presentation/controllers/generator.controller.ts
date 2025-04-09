@@ -31,6 +31,7 @@ export class GeneratorController {
         companyName: { type: 'string', example: 'Tech Solutions Inc.' },
         serviceName: { type: 'string', example: 'Installation & Repair Company' },
         image: { type: 'string', format: 'binary' },
+        markAsUsed: { type: 'boolean', description: 'Mark as used (empty for false)', example: true },
       },
       required: ['companyName', 'serviceName', 'image'],
     },
@@ -40,12 +41,15 @@ export class GeneratorController {
       throw new BadRequestException('Image file is required');
     }
 
-    const { companyName, serviceName } = bodyDto;
+    const { companyName, serviceName, markAsUsed } = bodyDto;
+    const companyNameSanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const serviceNameSanitized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     // Ahora pasamos el archivo separado del DTO
     const imagePath = await this.saveImageUseCase.execute({
-      companyName,
-      serviceName,
+      companyName: companyNameSanitized,
+      serviceName: serviceNameSanitized,
       image: file,
+      markAsUsed,
     });
 
     return { url: imagePath };

@@ -11,4 +11,8 @@ export class SaveImageDTO {
   @IsString()
   @IsNotEmpty()
   serviceName: string;
+
+  @ApiProperty({ description: 'Mark as used', example: true })
+  @IsEnum([true])
+  markAsUsed: boolean;
 }

@@ -6,6 +6,7 @@ interface UploadImageDTO {
   companyName: string;
   serviceName: string;
   image: Express.Multer.File;
+  markAsUsed?: boolean;
 }
 
 @Injectable()
@@ -13,7 +14,7 @@ export class SaveImageUseCase {
   constructor(private readonly storageService: GoogleStorageService) {}
 
   async execute(saveImageDTO: UploadImageDTO): Promise<string> {
-    const { companyName, serviceName, image } = saveImageDTO;
+    const { companyName, serviceName, image, markAsUsed } = saveImageDTO;
 
     // Verificaciones
     if (!companyName || !serviceName) {
@@ -25,9 +26,8 @@ export class SaveImageUseCase {
 
     const imageName = image.originalname;
     const imagePath = image.path;
-
     const uploadPath = await this.storageService.upload({
-      fileName: `${companyName}/${serviceName}/${imageName.replace('.jpg', '_used.jpg')}`,
+      fileName: `${companyName}/${serviceName}/${markAsUsed ? imageName.replace('.jpg', '_used.jpg') : imageName}`,
       filePath: imagePath,
       rootFolder: 'CLIENT_IMAGES/',
     });
