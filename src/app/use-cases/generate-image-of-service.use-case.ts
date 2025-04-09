@@ -11,7 +11,7 @@ export class GenerateImageOfServiceUseCase {
     private readonly storageService: GoogleStorageService,
   ) {}
 
-  async execute(data: GenerateImageOfServiceDto): Promise<[string, string]> {
+  async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
     const { numberOfImages, companyName, serviceName } = data;
     // verify if the companyName and serviceName are not empty
     if (!companyName || !serviceName) {
@@ -24,7 +24,7 @@ export class GenerateImageOfServiceUseCase {
     if (!existImage) {
       // if it is used, generate a new image
       const prompt = buildPromptFromTemplate(data);
-      const imagePath = await this.generatorService.generateImage(prompt, numberOfImages);
+      const [revisedPrompt, imagePath] = await this.generatorService.generateImage(prompt, numberOfImages);
       let imageName = imagePath.split('/').pop();
       imageName = imageName?.split('\\').pop();
       const uploadPath = await this.storageService.upload({
@@ -40,7 +40,7 @@ export class GenerateImageOfServiceUseCase {
       });
       // delete the image from the generator service
       await this.generatorService.deleteImage(imagePath);
-      return [imagePath, uploadPath];
+      return [revisedPrompt, imagePath, uploadPath];
     } else {
       // if it is not used, download the image
       const imageName = images[0].split('/').pop();
@@ -54,7 +54,7 @@ export class GenerateImageOfServiceUseCase {
         newFileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + (!imageName?.includes('_used.jpg') ? imageName?.replace('.jpg', '_used.jpg') : imageName) || 'image.jpg',
         rootFolder: 'IA_IMAGES/',
       });
-      return [images[0], uploadPath];
+      return ['', images[0], uploadPath];
     }
   }
 

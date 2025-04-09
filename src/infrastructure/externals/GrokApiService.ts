@@ -82,7 +82,7 @@ export class GrokService implements IIAGeneratorRepository {
     }
   }
 
-  async generateImage(prompt: string, number_images: number): Promise<string> {
+  async generateImage(prompt: string, number_images: number): Promise<[string, string]> {
     try {
       if (!this.apiKey) {
         throw new Error('Grok API key is not set in environment variables.');
@@ -110,12 +110,13 @@ export class GrokService implements IIAGeneratorRepository {
 
       // Get image URL and download/crop
       const imageUrl = data.data[0]?.url;
+      const revisedPrompt = data.data[0]?.revised_prompt;
       if (!imageUrl) {
         throw new Error('No image URL received from Grok API');
       }
 
       // Download and crop image, return local path
-      return this.downloadAndCropImage(imageUrl);
+      return [revisedPrompt, await this.downloadAndCropImage(imageUrl)];
     } catch (error) {
       console.error('Error generating image:', error);
       throw new Error(`Failed to generate image: ${error.message}`);

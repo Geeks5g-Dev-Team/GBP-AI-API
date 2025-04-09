@@ -6,7 +6,7 @@ export class OpenAiService implements IIAGeneratorRepository {
   constructor(private readonly openAi: OpenAI) {
     this.model = 'dall-e-3';
   }
-  async generateImage(prompt: string, number_images: number, size: SIZE_OPTIONS): Promise<string> {
+  async generateImage(prompt: string, number_images: number, size: SIZE_OPTIONS): Promise<[string, string]> {
     try {
       const response = await this.openAi.images.generate({
         prompt,
@@ -16,7 +16,7 @@ export class OpenAiService implements IIAGeneratorRepository {
         quality: 'hd',
       });
       const { data } = response;
-      return data[0].url || 'no image';
+      return ['', data[0].url || 'no image'];
     } catch (error) {
       if (error.response) {
         const { data, status } = error.response;

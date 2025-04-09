@@ -16,9 +16,9 @@ export class GeneratorController {
   ) {}
 
   @Post('image-of-service')
-  async generateImageOfService(@Body() bodyDto: GenerateImageOfServiceDto, @Request() req: any): Promise<{ url: string }> {
-    const [, uploadUrl] = await this.generateImageOfServiceUseCase.execute(bodyDto);
-    return { url: uploadUrl };
+  async generateImageOfService(@Body() bodyDto: GenerateImageOfServiceDto, @Request() req: any): Promise<{ url: string; revisedPrompt?: string }> {
+    const [revisedPrompt, , uploadUrl] = await this.generateImageOfServiceUseCase.execute(bodyDto);
+    return { url: uploadUrl, revisedPrompt };
   }
 
   @Post('save-image')
