@@ -21,10 +21,6 @@ export class GenerateImageOfServiceUseCase {
     const serviceNameSanitized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     // verify if exist image in storage and if it is used
     const [existImage, images] = await this.existImagesUnused(companyNameSanitized, serviceNameSanitized);
-    console.log('Found image in storage');
-    console.log(images);
-    console.log('Exist image: ' + existImage);
-
     if (!existImage) {
       // if it is used, generate a new image
       const prompt = buildPromptFromTemplate(data);
@@ -48,12 +44,10 @@ export class GenerateImageOfServiceUseCase {
     } else {
       // if it is not used, download the image
       const imageName = images[0].split('/').pop();
-      console.log(imageName);
       const uploadPath = await this.storageService.download({
         fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
         rootFolder: 'IA_IMAGES/',
       });
-      console.log(uploadPath);
       // rename the file in storage to mark it as used
       await this.storageService.renameFile({
         fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
