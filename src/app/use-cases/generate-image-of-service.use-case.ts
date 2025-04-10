@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GenerateImageOfServiceDto } from '../dtos/generate-image-of-service.dto';
 import { buildPromptFromTemplate } from '../builders/prompt.builder';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
@@ -6,64 +6,127 @@ import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorage
 
 @Injectable()
 export class GenerateImageOfServiceUseCase {
+  private readonly logger = new Logger(GenerateImageOfServiceUseCase.name);
+
   constructor(
     private readonly generatorService: GrokService,
     private readonly storageService: GoogleStorageService,
   ) {}
 
   async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
-    const { numberOfImages, companyName, serviceName } = data;
-    // verify if the companyName and serviceName are not empty
+    this.validateInput(data);
+
+    const { companyName, serviceName, numberOfImages } = data;
+    const sanitizedCompany = this.sanitizeName(companyName);
+    const sanitizedService = this.sanitizeName(serviceName);
+
+    // First priority: Check CLIENT_IMAGES for unused images
+    const clientImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedService, 'CLIENT_IMAGES/');
+
+    if (clientImageResult) {
+      this.logger.log(`Using client-provided image for ${sanitizedCompany}/${sanitizedService}`);
+      return clientImageResult;
+    }
+
+    // Second priority: Check IA_IMAGES for unused images
+    const iaImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedService, 'IA_IMAGES/');
+
+    if (iaImageResult) {
+      this.logger.log(`Using existing AI-generated image for ${sanitizedCompany}/${sanitizedService}`);
+      return iaImageResult;
+    }
+
+    // Last resort: Generate new image with Grok
+    this.logger.log(`Generating new image for ${sanitizedCompany}/${sanitizedService}`);
+    return this.generateAndUploadNewImage(data, sanitizedCompany, sanitizedService);
+  }
+
+  private validateInput(data: GenerateImageOfServiceDto): void {
+    const { companyName, serviceName } = data;
     if (!companyName || !serviceName) {
       throw new Error('Company name and service name are required');
     }
-    const companyNameSanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const serviceNameSanitized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    // verify if exist image in storage and if it is used
-    const [existImage, images] = await this.existImagesUnused(companyNameSanitized, serviceNameSanitized);
-    if (!existImage) {
-      // if it is used, generate a new image
-      const prompt = buildPromptFromTemplate(data);
-      const [revisedPrompt, imagePath] = await this.generatorService.generateImage(prompt, numberOfImages);
-      let imageName = imagePath.split('/').pop();
-      imageName = imageName?.split('\\').pop();
-      const uploadPath = await this.storageService.upload({
-        fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
-        filePath: imagePath,
-        rootFolder: 'IA_IMAGES/',
-      });
-      // rename the file in storage to mark it as used
-      await this.storageService.renameFile({
-        fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
-        newFileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
-        rootFolder: 'IA_IMAGES/',
-      });
-      // delete the image from the generator service
-      await this.generatorService.deleteImage(imagePath);
-      return [revisedPrompt, imagePath, uploadPath];
-    } else {
-      // if it is not used, download the image
-      const imageName = images[0].split('/').pop();
-      const uploadPath = await this.storageService.download({
-        fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
-        rootFolder: 'IA_IMAGES/',
-      });
-      // rename the file in storage to mark it as used
-      await this.storageService.renameFile({
-        fileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + imageName,
-        newFileName: companyNameSanitized + '/' + serviceNameSanitized + '/' + (!imageName?.includes('_used.jpg') ? imageName?.replace('.jpg', '_used.jpg') : imageName) || 'image.jpg',
-        rootFolder: 'IA_IMAGES/',
-      });
-      return ['', images[0], uploadPath];
-    }
   }
 
-  async existImagesUnused(companyNameSanitized: string, serviceNameSanitized: string): Promise<[boolean, string[]]> {
-    const images = await this.storageService.getImages({
-      prefix: `${companyNameSanitized}/${serviceNameSanitized}/`,
-      rootFolder: 'IA_IMAGES/',
+  private sanitizeName(name: string): string {
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  }
+
+  private async findAndProcessUnusedImage(company: string, service: string, rootFolder: string): Promise<[string, string, string] | null> {
+    const [hasUnusedImages, unusedImages] = await this.findUnusedImages(company, service, rootFolder);
+
+    if (!hasUnusedImages) {
+      return null;
+    }
+
+    const imagePath = unusedImages[0];
+    const imageName = imagePath.split('/').pop() || 'image.jpg';
+
+    // Mark image as used by renaming
+    const usedImageName = this.getUsedImageName(imageName);
+    await this.storageService.renameFile({
+      fileName: `${company}/${service}/${imageName}`,
+      newFileName: `${company}/${service}/${usedImageName}`,
+      rootFolder,
     });
+    // Download the image
+    const downloadPath = await this.storageService.download({
+      fileName: `${company}/${service}/${usedImageName}`,
+      rootFolder,
+    });
+    this.logger.log(`Marked image as used: ${rootFolder}/${company}/${service}/${usedImageName}`);
+
+    return ['', imagePath, downloadPath];
+  }
+
+  private async findUnusedImages(company: string, service: string, rootFolder: string): Promise<[boolean, string[]]> {
+    const images = await this.storageService.getImages({
+      prefix: `${company}/${service}/`,
+      rootFolder,
+    });
+
     const unusedImages = images.filter((image) => !image.includes('_used.jpg'));
     return [unusedImages.length > 0, unusedImages];
+  }
+
+  private getUsedImageName(imageName: string): string {
+    if (imageName.includes('_used.jpg')) {
+      return imageName;
+    }
+    return imageName.replace('.jpg', '_used.jpg');
+  }
+
+  private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, company: string, service: string): Promise<[string, string, string]> {
+    const prompt = buildPromptFromTemplate(data);
+    const [revisedPrompt, localImagePath] = await this.generatorService.generateImage(prompt, data.numberOfImages);
+
+    const imageName = this.extractFileName(localImagePath);
+
+    // Upload the newly generated image
+    const uploadPath = await this.storageService.upload({
+      fileName: `${company}/${service}/${imageName}`,
+      filePath: localImagePath,
+      rootFolder: 'IA_IMAGES/',
+    });
+
+    // Mark the newly uploaded image as used
+    const usedImageName = this.getUsedImageName(imageName);
+    await this.storageService.renameFile({
+      fileName: `${company}/${service}/${imageName}`,
+      newFileName: `${company}/${service}/${usedImageName}`,
+      rootFolder: 'IA_IMAGES/',
+    });
+
+    this.logger.log(`Marked newly generated image as used: IA_IMAGES/${company}/${service}/${usedImageName}`);
+
+    // Clean up local file
+    await this.generatorService.deleteImage(localImagePath);
+
+    return [revisedPrompt, localImagePath, uploadPath];
+  }
+
+  private extractFileName(path: string): string {
+    const filename = path.split('/').pop();
+    return filename?.split('\\').pop() || 'image.jpg';
   }
 }
