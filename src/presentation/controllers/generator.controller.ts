@@ -47,8 +47,8 @@ export class GeneratorController {
       throw new BadRequestException('Image file is required');
     }
 
-    const { companyName, serviceName, markAsUsed } = bodyDto;
-    const companyNameSanitized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const { companyId, serviceName, markAsUsed } = bodyDto;
+    const companyNameSanitized = companyId.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const serviceNameSanitized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '_');
     // Ahora pasamos el archivo separado del DTO
     const imageUrls = await this.saveImageUseCase.execute({

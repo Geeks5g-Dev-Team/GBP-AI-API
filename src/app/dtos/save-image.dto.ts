@@ -2,10 +2,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, Min, IsNumber, IsEnum, IsOptional } from 'class-validator';
 
 export class SaveImageDTO {
-  @ApiProperty({ description: 'Company Name', example: 'Tech Solutions Inc.' })
+  @ApiProperty({ description: 'Company Name', example: '10198908623236828356' })
   @IsString()
   @IsNotEmpty()
-  companyName: string;
+  companyId: string;
 
   @ApiProperty({ description: 'Service name', example: 'Installation & Repair Company' })
   @IsString()
