@@ -9,6 +9,8 @@ import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { GeneratorController } from 'src/presentation/controllers/generator.controller';
+import { FirebaseModule } from './firebase/firebase.module';
+import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 
 @Module({
   imports: [
@@ -23,11 +25,11 @@ import { GeneratorController } from 'src/presentation/controllers/generator.cont
         },
       }),
     }),
+    FirebaseModule,
   ],
   controllers: [GeneratorController],
   providers: [
-    // OpenAiService,
-
+    FirestoreService,
     GenerateImageOfServiceUseCase,
     SaveImageUseCase,
     GrokService,

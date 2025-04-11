@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GenerateImageOfServiceDto } from '../dtos/generate-image-of-service.dto';
-import { buildPromptFromTemplate } from '../builders/prompt.builder';
+import { buildPromptFromTemplate, dataTemplate } from '../builders/prompt.builder';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 
 @Injectable()
 export class GenerateImageOfServiceUseCase {
@@ -11,13 +12,14 @@ export class GenerateImageOfServiceUseCase {
   constructor(
     private readonly generatorService: GrokService,
     private readonly storageService: GoogleStorageService,
+    private readonly firestoreService: FirestoreService,
   ) {}
 
   async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
     this.validateInput(data);
 
-    const { companyName, serviceName, numberOfImages } = data;
-    const sanitizedCompany = this.sanitizeName(companyName);
+    const { companyId, serviceName, numberOfImages } = data;
+    const sanitizedCompany = this.sanitizeName(companyId);
     const sanitizedService = this.sanitizeName(serviceName);
 
     // First priority: Check CLIENT_IMAGES for unused images
@@ -42,8 +44,8 @@ export class GenerateImageOfServiceUseCase {
   }
 
   private validateInput(data: GenerateImageOfServiceDto): void {
-    const { companyName, serviceName } = data;
-    if (!companyName || !serviceName) {
+    const { companyId, serviceName } = data;
+    if (!companyId || !serviceName) {
       throw new Error('Company name and service name are required');
     }
   }
@@ -97,7 +99,14 @@ export class GenerateImageOfServiceUseCase {
   }
 
   private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, company: string, service: string): Promise<[string, string, string]> {
-    const prompt = buildPromptFromTemplate(data);
+    const businessData = await this.firestoreService.getDocument('businesses', data.companyId);
+    const dataTransfored: dataTemplate = {
+      country: businessData.serviceArea.places.placeInfos[0].placeName,
+      mainService: businessData.title,
+      businessType: service,
+      additional_context: businessData.categories.primaryCategory.moreHoursTypes.map((category) => category.localizedDisplayName).join(', '),
+    };
+    const prompt = buildPromptFromTemplate(dataTransfored);
     const [revisedPrompt, localImagePath] = await this.generatorService.generateImage(prompt, data.numberOfImages);
 
     const imageName = this.extractFileName(localImagePath);
