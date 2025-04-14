@@ -56,6 +56,7 @@ export class GrokService implements IIAGeneratorRepository {
         GPSLatitude: businessData.geometry?.location?.lat || 37.7749,
         GPSLongitude: businessData.geometry?.location?.lng || -122.4194,
         GPSAltitude: 15.3,
+        Copyright: `© ${businessData.title}, 2025. All rights reserved.`,
       });
       console.log('📸 Metadata written with exiftool-vendored');
     } catch (error) {
