@@ -32,18 +32,16 @@ import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
     FirestoreService,
     GenerateImageOfServiceUseCase,
     SaveImageUseCase,
-    GrokService,
-    GoogleStorageService,
     {
       provide: GrokService,
-      useFactory: (configService: ConfigService) => {
+      useFactory: (configService: ConfigService, firestoreService: FirestoreService) => {
         const apiKey = configService.get<string>('GROK_API_KEY');
         if (!apiKey) {
           throw new Error('GROK_API_KEY is not defined');
         }
-        return new GrokService(apiKey, 'images_grok');
+        return new GrokService(apiKey, 'images_grok', firestoreService);
       },
-      inject: [ConfigService],
+      inject: [ConfigService, FirestoreService],
     },
     {
       provide: GoogleStorageService,
