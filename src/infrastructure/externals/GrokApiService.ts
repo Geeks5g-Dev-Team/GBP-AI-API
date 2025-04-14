@@ -64,6 +64,7 @@ export class GrokService implements IIAGeneratorRepository {
           width: metadata.width,
           height: metadata.height ? metadata.height - cropHeight : undefined,
         })
+        .jpeg({ quality: 90 })
         .toFile(finalImagePath);
 
       // Remove temporary file
