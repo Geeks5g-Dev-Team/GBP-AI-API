@@ -107,7 +107,7 @@ export class GenerateImageOfServiceUseCase {
       additional_context: businessData.categories.primaryCategory.moreHoursTypes.map((category) => category.localizedDisplayName).join(', '),
     };
     const prompt = buildPromptFromTemplate(dataTransfored);
-    const [revisedPrompt, localImagePath] = await this.generatorService.generateImage(prompt, data.numberOfImages);
+    const [revisedPrompt, localImagePath] = await this.generatorService.generateImage(prompt, data.numberOfImages, data.companyId);
 
     const imageName = this.extractFileName(localImagePath);
 
@@ -118,15 +118,15 @@ export class GenerateImageOfServiceUseCase {
       rootFolder: 'IA_IMAGES/',
     });
 
-    // Mark the newly uploaded image as used
-    const usedImageName = this.getUsedImageName(imageName);
-    await this.storageService.renameFile({
-      fileName: `${company}/${service}/${imageName}`,
-      newFileName: `${company}/${service}/${usedImageName}`,
-      rootFolder: 'IA_IMAGES/',
-    });
+    // // Mark the newly uploaded image as used
+    // const usedImageName = this.getUsedImageName(imageName);
+    // await this.storageService.renameFile({
+    //   fileName: `${company}/${service}/${imageName}`,
+    //   newFileName: `${company}/${service}/${usedImageName}`,
+    //   rootFolder: 'IA_IMAGES/',
+    // });
 
-    this.logger.log(`Marked newly generated image as used: IA_IMAGES/${company}/${service}/${usedImageName}`);
+    // this.logger.log(`Marked newly generated image as used: IA_IMAGES/${company}/${service}/${usedImageName}`);
 
     // Clean up local file
     await this.generatorService.deleteImage(localImagePath);

@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as sharp from 'sharp';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { FirestoreService } from './firebaseService';
 
 import { IIAGeneratorRepository } from 'src/domain/interfaces/IAGenerator.repository';
 
@@ -12,6 +13,7 @@ export class GrokService implements IIAGeneratorRepository {
   constructor(
     private readonly apiKey: string,
     private readonly downloadPath: string,
+    private readonly firestoreService: FirestoreService,
   ) {
     this.model = 'grok-2-image';
     // Use NestJS's approach to determine download path
@@ -38,9 +40,14 @@ export class GrokService implements IIAGeneratorRepository {
    * @param cropHeight Height to crop from bottom (default 100 pixels)
    * @returns Local path of the cropped image
    */
-  private async downloadAndCropImage(imageUrl: string, cropHeight: number = 100): Promise<string> {
-    // Generate unique filename
-    const filename = `${uuidv4()}_used.jpg`;
+  private async downloadAndCropImage(imageUrl: string, locationId: string, cropHeight: number = 100): Promise<string> {
+    // Generate filename using dd_mm_yyyy format
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const filename = `${day}_${month}_${year}.jpg`;
+
     const tempDownloadPath = path.join(this.downloadPath, `temp_${filename}`);
     const finalImagePath = path.join(this.downloadPath, filename);
 
@@ -58,6 +65,12 @@ export class GrokService implements IIAGeneratorRepository {
       // Get image metadata
       const metadata = await sharp(tempDownloadPath).metadata();
 
+      console.log(locationId);
+
+      const businessData = await this.firestoreService.getDocument('businesses', locationId);
+      const address = businessData?.address?.formattedAddress || 'Unknown address';
+
+      console.log(`Address: ${address}`);
       // Crop image
       await sharp(tempDownloadPath)
         .resize({
@@ -65,7 +78,11 @@ export class GrokService implements IIAGeneratorRepository {
           height: metadata.height ? metadata.height - cropHeight : undefined,
         })
         .jpeg({ quality: 90 })
+        .withMetadata({ comment: address } as any)
         .toFile(finalImagePath);
+
+      const meta = await sharp(finalImagePath).metadata();
+      console.log(`Image metadata: ${JSON.stringify(meta)}`);
 
       // Remove temporary file
       await fs.unlink(tempDownloadPath);
@@ -83,7 +100,7 @@ export class GrokService implements IIAGeneratorRepository {
     }
   }
 
-  async generateImage(prompt: string, number_images: number): Promise<[string, string]> {
+  async generateImage(prompt: string, number_images: number, locationId: string): Promise<[string, string]> {
     try {
       if (!this.apiKey) {
         throw new Error('Grok API key is not set in environment variables.');
@@ -117,7 +134,7 @@ export class GrokService implements IIAGeneratorRepository {
       }
 
       // Download and crop image, return local path
-      return [revisedPrompt, await this.downloadAndCropImage(imageUrl)];
+      return [revisedPrompt, await this.downloadAndCropImage(imageUrl, locationId)];
     } catch (error) {
       console.error('Error generating image:', error);
       throw new Error(`Failed to generate image: ${error.message}`);
