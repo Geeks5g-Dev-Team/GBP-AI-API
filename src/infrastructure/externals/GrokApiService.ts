@@ -4,6 +4,7 @@ import * as sharp from 'sharp';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { FirestoreService } from './firebaseService';
+import { exiftool } from 'exiftool-vendored';
 
 import { IIAGeneratorRepository } from 'src/domain/interfaces/IAGenerator.repository';
 
@@ -34,6 +35,34 @@ export class GrokService implements IIAGeneratorRepository {
     }
   }
 
+  private async addPhoneExifMetadata(imagePath: string, businessData: any): Promise<void> {
+    function randomDateInPast30Days() {
+      const now = new Date();
+      const past = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000);
+      return `${past.getFullYear()}:${String(past.getMonth() + 1).padStart(2, '0')}:${String(past.getDate()).padStart(2, '0')} ${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}:${String(past.getSeconds()).padStart(2, '0')}`;
+    }
+
+    try {
+      await exiftool.write(imagePath, {
+        Make: 'Apple',
+        Model: 'iPhone 13 Pro',
+        Software: 'iOS 16.4.1',
+        Artist: businessData.title || 'Unknown',
+        DateTimeOriginal: randomDateInPast30Days(),
+        UserComment: businessData.storeFrontAddress?.addressLines[0] || 'Unknown address',
+        Comment: businessData.storeFrontAddress?.addressLines[0] || 'Unknown address',
+        ImageDescription: businessData.profile?.description || 'Unknown address',
+        Description: businessData.profile?.description || 'No description available',
+        GPSLatitude: businessData.geometry?.location?.lat || 37.7749,
+        GPSLongitude: businessData.geometry?.location?.lng || -122.4194,
+        GPSAltitude: 15.3,
+      });
+      console.log('📸 Metadata written with exiftool-vendored');
+    } catch (error) {
+      console.error('Failed to write EXIF metadata with exiftool-vendored:', error);
+    }
+  }
+
   /**
    * Download and crop image to remove watermark
    * @param imageUrl URL of the image to download
@@ -43,10 +72,8 @@ export class GrokService implements IIAGeneratorRepository {
   private async downloadAndCropImage(imageUrl: string, locationId: string, cropHeight: number = 100): Promise<string> {
     // Generate filename using dd_mm_yyyy format
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const year = now.getFullYear();
-    const filename = `${day}_${month}_${year}.jpg`;
+    const timestamp = `${String(now.getDate()).padStart(2, '0')}_${String(now.getMonth() + 1).padStart(2, '0')}_${now.getFullYear()}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const filename = `${timestamp}_used.jpg`;
 
     const tempDownloadPath = path.join(this.downloadPath, `temp_${filename}`);
     const finalImagePath = path.join(this.downloadPath, filename);
@@ -68,9 +95,7 @@ export class GrokService implements IIAGeneratorRepository {
       console.log(locationId);
 
       const businessData = await this.firestoreService.getDocument('businesses', locationId);
-      const address = businessData?.address?.formattedAddress || 'Unknown address';
 
-      console.log(`Address: ${address}`);
       // Crop image
       await sharp(tempDownloadPath)
         .resize({
@@ -78,11 +103,12 @@ export class GrokService implements IIAGeneratorRepository {
           height: metadata.height ? metadata.height - cropHeight : undefined,
         })
         .jpeg({ quality: 90 })
-        .withMetadata({ comment: address } as any)
         .toFile(finalImagePath);
 
-      const meta = await sharp(finalImagePath).metadata();
-      console.log(`Image metadata: ${JSON.stringify(meta)}`);
+      await this.addPhoneExifMetadata(finalImagePath, businessData);
+
+      const meta = await exiftool.read(finalImagePath);
+      console.log('🔍 EXIF metadata from exiftool:', meta);
 
       // Remove temporary file
       await fs.unlink(tempDownloadPath);

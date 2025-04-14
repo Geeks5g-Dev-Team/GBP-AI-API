@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import * as compression from 'compression';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { VersioningType } from '@nestjs/common';
+import { exiftool } from 'exiftool-vendored';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -81,6 +82,16 @@ async function bootstrap() {
         theme: 'monokai', // Tema de resaltado de sintaxis
       },
     },
+  });
+
+  process.on('SIGINT', async () => {
+    await exiftool.end();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    await exiftool.end();
+    process.exit(0);
   });
 
   // Puerto de escucha
