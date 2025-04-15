@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GenerateImageOfServiceDto } from '../dtos/generate-image-of-service.dto';
 import { buildPromptFromTemplate, dataTemplate } from '../builders/prompt.builder';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
+import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 
@@ -10,7 +11,8 @@ export class GenerateImageOfServiceUseCase {
   private readonly logger = new Logger(GenerateImageOfServiceUseCase.name);
 
   constructor(
-    private readonly generatorService: GrokService,
+    private readonly grokService: GrokService,
+    private readonly openAiService: OpenAiService,
     private readonly storageService: GoogleStorageService,
     private readonly firestoreService: FirestoreService,
   ) {}
@@ -101,13 +103,17 @@ export class GenerateImageOfServiceUseCase {
   private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, company: string, service: string): Promise<[string, string, string]> {
     const businessData = await this.firestoreService.getDocument('businesses', data.companyId);
     const dataTransfored: dataTemplate = {
-      country: businessData.serviceArea.places.placeInfos[0].placeName,
-      mainService: businessData.title,
-      businessType: service,
-      additional_context: businessData.categories.primaryCategory.moreHoursTypes.map((category) => category.localizedDisplayName).join(', '),
+      country: businessData.serviceArea?.places?.placeInfos[0]?.placeName || '',
+      mainService: businessData.title || '',
+      businessType: service || '',
+      keyword: data.keyword || '',
     };
-    const prompt = buildPromptFromTemplate(dataTransfored);
-    const [revisedPrompt, localImagePath] = await this.generatorService.generateImage(prompt, data.numberOfImages, data.companyId);
+    const rawPrompt = buildPromptFromTemplate(dataTransfored);
+    console.log('Prompt:', rawPrompt);
+    const { postPrompt, imagePrompt } = await this.openAiService.generatePostAndImagePrompts(rawPrompt, data.keyword, businessData);
+    console.log('Post Prompt:', postPrompt);
+    console.log('Improved Prompt:', imagePrompt);
+    const localImagePath = await this.grokService.generateImage(imagePrompt, data.numberOfImages, data.companyId);
 
     const imageName = this.extractFileName(localImagePath);
 
@@ -129,9 +135,9 @@ export class GenerateImageOfServiceUseCase {
     // this.logger.log(`Marked newly generated image as used: IA_IMAGES/${company}/${service}/${usedImageName}`);
 
     // Clean up local file
-    await this.generatorService.deleteImage(localImagePath);
+    await this.grokService.deleteImage(localImagePath);
 
-    return [revisedPrompt, localImagePath, uploadPath];
+    return [postPrompt, localImagePath, uploadPath];
   }
 
   private extractFileName(path: string): string {

@@ -8,9 +8,11 @@ import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-
 import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
+import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GeneratorController } from 'src/presentation/controllers/generator.controller';
 import { FirebaseModule } from './firebase/firebase.module';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
+import OpenAI from 'openai';
 
 @Module({
   imports: [
@@ -42,6 +44,18 @@ import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
         return new GrokService(apiKey, 'images_grok', firestoreService);
       },
       inject: [ConfigService, FirestoreService],
+    },
+    {
+      provide: OpenAiService,
+      useFactory: (configService: ConfigService) => {
+        const apiKey = configService.get<string>('OPENAI_API_KEY');
+        if (!apiKey) {
+          throw new Error('OPENAI_API_KEY is not defined');
+        }
+        const openai = new OpenAI({ apiKey });
+        return new OpenAiService(openai);
+      },
+      inject: [ConfigService],
     },
     {
       provide: GoogleStorageService,

@@ -25,4 +25,9 @@ export class GenerateImageOfServiceDto {
   @IsString()
   @IsNotEmpty()
   companyId: string;
+
+  @ApiProperty({ description: 'Keyword', example: 'repairs near me' })
+  @IsString()
+  @IsNotEmpty()
+  keyword: string;
 }
