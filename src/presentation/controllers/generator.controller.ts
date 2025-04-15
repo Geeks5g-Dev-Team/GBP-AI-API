@@ -1,12 +1,13 @@
 import { BadRequestException, Body, Controller, Get, Post, Request, StreamableFile, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { GenerateImageOfServiceDto } from 'src/app/dtos/generate-image-of-service.dto';
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
-import { createReadStream } from 'fs';
-import { join } from 'path';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { SaveImageDTO } from 'src/app/dtos/save-image.dto';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
+import { randomUUID } from 'crypto';
 
 @Controller('generator')
 export class GeneratorController {
@@ -22,14 +23,37 @@ export class GeneratorController {
   }
 
   @Post('save-image')
-  @UseInterceptors(FilesInterceptor('images', 10)) // 10 es el número máximo de archivos, ajústalo según necesites
+  @UseInterceptors(
+    FilesInterceptor('images', 10, {
+      fileFilter: (req, file, cb) => {
+        const isImage = file.mimetype.startsWith('image/');
+        if (!isImage) {
+          return cb(new BadRequestException('Only image files are allowed!'), false);
+        }
+        cb(null, true);
+      },
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const extension = extname(file.originalname).toLowerCase();
+          const finalName = `${randomUUID()}${extension}`;
+          cb(null, finalName);
+        },
+      }),
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        companyName: { type: 'string', example: 'Tech Solutions Inc.' },
-        serviceName: { type: 'string', example: 'Installation & Repair Company' },
+        companyId: { type: 'string', example: '12121151872725055808' },
+        keyword: { type: 'string', example: 'scooter rental' },
+        markAsUsed: {
+          type: 'boolean',
+          description: 'Mark as used (empty for false)',
+          example: true,
+        },
         images: {
           type: 'array',
           items: {
@@ -37,26 +61,29 @@ export class GeneratorController {
             format: 'binary',
           },
         },
-        markAsUsed: { type: 'boolean', description: 'Mark as used (empty for false)', example: true },
       },
-      required: ['companyName', 'serviceName', 'images'],
+      required: ['companyId', 'keyword', 'images'],
     },
   })
   async saveImage(@Body() bodyDto: SaveImageDTO, @UploadedFiles() files: Express.Multer.File[]): Promise<{ urls: string[] }> {
     if (!files || files.length === 0) {
-      throw new BadRequestException('Image file is required');
+      throw new BadRequestException('At least one image file is required');
     }
 
-    const { companyId, serviceName, markAsUsed } = bodyDto;
-    const companyNameSanitized = companyId.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const serviceNameSanitized = serviceName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    // Ahora pasamos el archivo separado del DTO
-    const imageUrls = await this.saveImageUseCase.execute({
-      companyName: companyNameSanitized,
-      serviceName: serviceNameSanitized,
-      images: files,
-      markAsUsed,
-    });
+    const { companyId, keyword, markAsUsed } = bodyDto;
+
+    const companyIdSanitized = companyId.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const keywordSanitized = keyword.toLowerCase().replace(/[^a-z0-9]/g, '_');
+
+    const imageUrls = await this.saveImageUseCase.execute(
+      {
+        companyId: companyIdSanitized,
+        keyword: keywordSanitized,
+        markAsUsed,
+      },
+      files,
+    );
+
     return { urls: imageUrls };
   }
 }

@@ -1,33 +1,41 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
-
-interface UploadImageDTO {
-  companyName: string;
-  serviceName: string;
-  images: Express.Multer.File[];
-  markAsUsed?: boolean;
-}
+import { SaveImageDTO } from '../dtos/save-image.dto';
+import { extname } from 'path';
+import { FirestoreService } from '../../infrastructure/externals/firebaseService';
+import { ExifService } from 'src/infrastructure/externals/utils/exif.service';
 
 @Injectable()
 export class SaveImageUseCase {
-  constructor(private readonly storageService: GoogleStorageService) {}
+  constructor(
+    private readonly storageService: GoogleStorageService,
+    private readonly firestoreService: FirestoreService,
+    private readonly exifService: ExifService,
+  ) {}
 
-  async execute(saveImageDTO: UploadImageDTO): Promise<string[]> {
-    const { companyName, serviceName, images, markAsUsed } = saveImageDTO;
+  async execute(saveImageDTO: SaveImageDTO, images: Express.Multer.File[]): Promise<string[]> {
+    const { companyId, keyword, markAsUsed } = saveImageDTO;
 
-    // Verificaciones
-    if (!companyName || !serviceName) {
-      throw new Error('Company name and service name are required');
+    if (!companyId || !keyword) {
+      throw new Error('Company name and keyword are required');
     }
     if (!images || images.length === 0) {
       throw new Error('At least one image is required');
     }
+
+    const businessData = await this.firestoreService.getDocument('businesses', companyId);
+
     const imageUrls = await Promise.all(
       images.map(async (image) => {
-        const imageName = image.originalname.replace('.jpg', Math.floor(Math.random() * 1000) + '.jpg');
         const imagePath = image.path;
+        const imageName = image.filename;
+
+        await this.exifService.addPhoneExifMetadata(imagePath, businessData);
+
+        const finalName = markAsUsed ? imageName.replace(extname(imageName), `_used${extname(imageName)}`) : imageName;
+
         const uploadPath = await this.storageService.upload({
-          fileName: `${companyName}/${serviceName}/${markAsUsed ? imageName.replace('.jpg', '_used.jpg') : imageName}`,
+          fileName: `${companyId}/${keyword}/${finalName}`,
           filePath: imagePath,
           rootFolder: 'CLIENT_IMAGES/',
         });

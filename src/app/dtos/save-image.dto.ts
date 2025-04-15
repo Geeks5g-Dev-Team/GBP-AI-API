@@ -1,16 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Min, IsNumber, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, Min, IsNumber, IsEnum, IsOptional, IsArray } from 'class-validator';
 
 export class SaveImageDTO {
-  @ApiProperty({ description: 'Company Name', example: '10198908623236828356' })
+  @ApiProperty({ description: 'Company Id', example: '10198908623236828356' })
   @IsString()
   @IsNotEmpty()
   companyId: string;
 
-  @ApiProperty({ description: 'Service name', example: 'Installation & Repair Company' })
+  @ApiProperty({ description: 'Keyword', example: 'Installation & Repair Company' })
   @IsString()
   @IsNotEmpty()
-  serviceName: string;
+  keyword: string;
 
   @ApiProperty({ description: 'Mark as used', example: true })
   @IsOptional()

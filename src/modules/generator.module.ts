@@ -13,6 +13,7 @@ import { GeneratorController } from 'src/presentation/controllers/generator.cont
 import { FirebaseModule } from './firebase/firebase.module';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 import OpenAI from 'openai';
+import { ExifService } from '../infrastructure/externals/utils/exif.service';
 
 @Module({
   imports: [
@@ -34,16 +35,17 @@ import OpenAI from 'openai';
     FirestoreService,
     GenerateImageOfServiceUseCase,
     SaveImageUseCase,
+    ExifService,
     {
       provide: GrokService,
-      useFactory: (configService: ConfigService, firestoreService: FirestoreService) => {
+      useFactory: (configService: ConfigService, firestoreService: FirestoreService, exifService: ExifService) => {
         const apiKey = configService.get<string>('GROK_API_KEY');
         if (!apiKey) {
           throw new Error('GROK_API_KEY is not defined');
         }
-        return new GrokService(apiKey, 'images_grok', firestoreService);
+        return new GrokService(apiKey, 'images_grok', firestoreService, exifService);
       },
-      inject: [ConfigService, FirestoreService],
+      inject: [ConfigService, FirestoreService, ExifService],
     },
     {
       provide: OpenAiService,

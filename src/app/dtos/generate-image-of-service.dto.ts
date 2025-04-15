@@ -3,10 +3,10 @@ import { IsString, IsNotEmpty, Min, IsNumber, IsEnum } from 'class-validator';
 import { SIZE_OPTIONS } from 'src/domain/interfaces/IAGenerator.repository';
 
 export class GenerateImageOfServiceDto {
-  @ApiProperty({ description: 'Service name', example: 'Installation & Repair Company' })
+  @ApiProperty({ description: 'Keyword', example: 'Installation & Repair Company' })
   @IsString()
   @IsNotEmpty()
-  serviceName: string;
+  keyword: string;
 
   // number of images
   @ApiProperty({ description: 'Number of images to generate', example: 1 })
@@ -25,9 +25,4 @@ export class GenerateImageOfServiceDto {
   @IsString()
   @IsNotEmpty()
   companyId: string;
-
-  @ApiProperty({ description: 'Keyword', example: 'repairs near me' })
-  @IsString()
-  @IsNotEmpty()
-  keyword: string;
 }

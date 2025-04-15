@@ -5,8 +5,8 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { FirestoreService } from './firebaseService';
 import { exiftool } from 'exiftool-vendored';
-
 import { IIAGeneratorRepository } from 'src/domain/interfaces/IAGenerator.repository';
+import { ExifService } from './utils/exif.service';
 
 export class GrokService implements IIAGeneratorRepository {
   model: string;
@@ -15,6 +15,7 @@ export class GrokService implements IIAGeneratorRepository {
     private readonly apiKey: string,
     private readonly downloadPath: string,
     private readonly firestoreService: FirestoreService,
+    private readonly exifService: ExifService,
   ) {
     this.model = 'grok-2-image';
     // Use NestJS's approach to determine download path
@@ -32,35 +33,6 @@ export class GrokService implements IIAGeneratorRepository {
       fs.ensureDirSync(this.downloadPath);
     } catch (error) {
       console.error('Failed to create download directory:', error);
-    }
-  }
-
-  private async addPhoneExifMetadata(imagePath: string, businessData: any): Promise<void> {
-    function randomDateInPast30Days() {
-      const now = new Date();
-      const past = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-      return `${past.getFullYear()}:${String(past.getMonth() + 1).padStart(2, '0')}:${String(past.getDate()).padStart(2, '0')} ${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}:${String(past.getSeconds()).padStart(2, '0')}`;
-    }
-
-    try {
-      await exiftool.write(imagePath, {
-        Make: 'Apple',
-        Model: 'iPhone 13 Pro',
-        Software: 'iOS 16.4.1',
-        Artist: businessData.title || 'Unknown',
-        DateTimeOriginal: randomDateInPast30Days(),
-        UserComment: businessData.storeFrontAddress?.addressLines[0] || 'Unknown address',
-        Comment: businessData.storeFrontAddress?.addressLines[0] || 'Unknown address',
-        ImageDescription: businessData.profile?.description || 'Unknown address',
-        Description: businessData.profile?.description || 'No description available',
-        GPSLatitude: businessData.geometry?.location?.lat || 37.7749,
-        GPSLongitude: businessData.geometry?.location?.lng || -122.4194,
-        GPSAltitude: 15.3,
-        Copyright: `© ${businessData.title}, 2025. All rights reserved.`,
-      });
-      console.log('📸 Metadata written with exiftool-vendored');
-    } catch (error) {
-      console.error('Failed to write EXIF metadata with exiftool-vendored:', error);
     }
   }
 
@@ -93,8 +65,6 @@ export class GrokService implements IIAGeneratorRepository {
       // Get image metadata
       const metadata = await sharp(tempDownloadPath).metadata();
 
-      console.log(locationId);
-
       const businessData = await this.firestoreService.getDocument('businesses', locationId);
 
       // Crop image
@@ -106,7 +76,7 @@ export class GrokService implements IIAGeneratorRepository {
         .jpeg({ quality: 90 })
         .toFile(finalImagePath);
 
-      await this.addPhoneExifMetadata(finalImagePath, businessData);
+      await this.exifService.addPhoneExifMetadata(finalImagePath, businessData);
 
       const meta = await exiftool.read(finalImagePath);
       console.log('🔍 EXIF metadata from exiftool:', meta);

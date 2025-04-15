@@ -20,34 +20,37 @@ export class GenerateImageOfServiceUseCase {
   async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
     this.validateInput(data);
 
-    const { companyId, serviceName, numberOfImages } = data;
+    const { companyId, keyword, numberOfImages } = data;
     const sanitizedCompany = this.sanitizeName(companyId);
-    const sanitizedService = this.sanitizeName(serviceName);
+    const sanitizedKeyword = this.sanitizeName(keyword);
 
-    // First priority: Check CLIENT_IMAGES for unused images
-    const clientImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedService, 'CLIENT_IMAGES/');
-
+    // 1. Check for unused client-uploaded images
+    const clientImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedKeyword, 'CLIENT_IMAGES/');
     if (clientImageResult) {
-      this.logger.log(`Using client-provided image for ${sanitizedCompany}/${sanitizedService}`);
+      this.logger.log(`Using client-provided image for ${sanitizedCompany}/${sanitizedKeyword}`);
       return clientImageResult;
     }
 
-    // Second priority: Check IA_IMAGES for unused images
-    const iaImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedService, 'IA_IMAGES/');
-
+    // 2. Check for unused AI-generated images
+    const iaImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedKeyword, 'IA_IMAGES/');
     if (iaImageResult) {
-      this.logger.log(`Using existing AI-generated image for ${sanitizedCompany}/${sanitizedService}`);
+      this.logger.log(`Using AI-generated image for ${sanitizedCompany}/${sanitizedKeyword}`);
       return iaImageResult;
     }
 
-    // Last resort: Generate new image with Grok
-    this.logger.log(`Generating new image for ${sanitizedCompany}/${sanitizedService}`);
-    return this.generateAndUploadNewImage(data, sanitizedCompany, sanitizedService);
+    if (iaImageResult) {
+      this.logger.log(`Using existing AI-generated image for ${sanitizedCompany}/${sanitizedKeyword}`);
+      return iaImageResult;
+    }
+
+    // 3. Generate new image
+    this.logger.log(`Generating new image for ${sanitizedCompany}/${sanitizedKeyword}`);
+    return this.generateAndUploadNewImage(data, sanitizedCompany, sanitizedKeyword);
   }
 
   private validateInput(data: GenerateImageOfServiceDto): void {
-    const { companyId, serviceName } = data;
-    if (!companyId || !serviceName) {
+    const { companyId, keyword } = data;
+    if (!companyId || !keyword) {
       throw new Error('Company name and service name are required');
     }
   }
