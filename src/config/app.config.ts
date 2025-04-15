@@ -14,10 +14,13 @@ export const appConfig = {
 
   // Configuración de CORS
   corsOptions: <CorsOptions>{
-    origin: [
-      'http://localhost:3000', // Frontend local
-      // /\.yourdomain\.com$/, // Dominios permitidos con regex
-    ],
+    origin: (origin, callback) => {
+      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+        callback(null, true); // Allow any localhost origin
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
     credentials: true,
