@@ -97,9 +97,10 @@ export class GeneratorController {
 
     const normalized = folder.startsWith('CLIENT_IMAGES/') ? folder.replace(/^CLIENT_IMAGES\//i, '') : folder;
     const sanitized = normalized.toLowerCase().replace(/[^a-z0-9/]/g, '_');
-    const fullPath = `CLIENT_IMAGES/${sanitized}`;
+    const fullPath = `CLIENT_IMAGES/${sanitized}/`;
+    const cleanPath = fullPath.replace(/\/{2,}/g, '/').replace(/\/?$/, '/');
 
-    const images = await this.storageService.listImages(fullPath);
+    const images = await this.storageService.listImages(cleanPath);
     return { images };
   }
 
