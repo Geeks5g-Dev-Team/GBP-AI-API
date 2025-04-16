@@ -12,23 +12,8 @@ export class ExifService {
     return `${past.getFullYear()}:${String(past.getMonth() + 1).padStart(2, '0')}:${String(past.getDate()).padStart(2, '0')} ${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}:${String(past.getSeconds()).padStart(2, '0')}`;
   }
 
-  private async ensureJpegFormat(imagePath: string): Promise<string> {
-    const metadata = await sharp(imagePath).metadata();
-
-    if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-      return imagePath;
-    }
-
-    const jpegPath = imagePath.replace(path.extname(imagePath), '.jpg');
-    await sharp(imagePath).jpeg({ quality: 90 }).toFile(jpegPath);
-    await fs.unlink(imagePath);
-    return jpegPath;
-  }
-
-  async addPhoneExifMetadata(originalImagePath: string, businessData: any): Promise<string> {
+  async addPhoneExifMetadata(imagePath: string, businessData: any): Promise<string> {
     try {
-      const imagePath = await this.ensureJpegFormat(originalImagePath);
-
       await exiftool.write(imagePath, {
         Make: 'Apple',
         Model: 'iPhone 13 Pro',

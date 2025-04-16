@@ -29,10 +29,10 @@ export class GeneratorController {
   @UseInterceptors(
     FilesInterceptor('images', 10, {
       fileFilter: (req, file, cb) => {
-        const isImage = file.mimetype.startsWith('image/');
-        if (!isImage) {
-          return cb(new BadRequestException('Only image files are allowed!'), false);
-        }
+        // const isImage = file.mimetype.startsWith('image/');
+        // if (!isImage) {
+        //   return cb(new BadRequestException('Only image files are allowed!'), false);
+        // }
         cb(null, true);
       },
       storage: diskStorage({
@@ -74,13 +74,11 @@ export class GeneratorController {
     }
 
     const { companyId, keyword, markAsUsed } = bodyDto;
-
-    const companyIdSanitized = companyId.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const keywordSanitized = keyword.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
     const imageUrls = await this.saveImageUseCase.execute(
       {
-        companyId: companyIdSanitized,
+        companyId,
         keyword: keywordSanitized,
         markAsUsed,
       },
@@ -91,9 +89,17 @@ export class GeneratorController {
   }
 
   @Get('list-images')
-  @ApiQuery({ name: 'folder', required: true, description: 'Folder path, e.g., CLIENT_IMAGES/companyId/keyword/' })
+  @ApiQuery({ name: 'folder', required: true, description: 'Relative folder path, e.g., 12121151872725055808/scooter rental' })
   async listImages(@Query('folder') folder: string): Promise<{ images: string[] }> {
-    const images = await this.storageService.listImages(folder);
+    if (!folder) {
+      throw new BadRequestException('Folder path is required');
+    }
+
+    const normalized = folder.startsWith('CLIENT_IMAGES/') ? folder.replace(/^CLIENT_IMAGES\//i, '') : folder;
+    const sanitized = normalized.toLowerCase().replace(/[^a-z0-9/]/g, '_');
+    const fullPath = `CLIENT_IMAGES/${sanitized}`;
+
+    const images = await this.storageService.listImages(fullPath);
     return { images };
   }
 
