@@ -15,8 +15,13 @@ export const appConfig = {
   // Configuración de CORS
   corsOptions: <CorsOptions>{
     origin: (origin, callback) => {
-      if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
-        callback(null, true); // Allow any localhost origin
+      const allowedOrigins = [
+        /^http:\/\/localhost(:\d+)?$/,
+        // /^https:\/\/html.onlineviewer.net$/, // ✅ new origin
+      ];
+
+      if (!origin || allowedOrigins.some((regex) => regex.test(origin))) {
+        callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
       }

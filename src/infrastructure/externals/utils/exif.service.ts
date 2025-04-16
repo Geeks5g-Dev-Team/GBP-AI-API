@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { exiftool } from 'exiftool-vendored';
+import * as sharp from 'sharp';
+import * as path from 'path';
+import * as fs from 'fs-extra';
 
 @Injectable()
 export class ExifService {
@@ -9,8 +12,23 @@ export class ExifService {
     return `${past.getFullYear()}:${String(past.getMonth() + 1).padStart(2, '0')}:${String(past.getDate()).padStart(2, '0')} ${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}:${String(past.getSeconds()).padStart(2, '0')}`;
   }
 
-  async addPhoneExifMetadata(imagePath: string, businessData: any): Promise<void> {
+  private async ensureJpegFormat(imagePath: string): Promise<string> {
+    const metadata = await sharp(imagePath).metadata();
+
+    if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
+      return imagePath;
+    }
+
+    const jpegPath = imagePath.replace(path.extname(imagePath), '.jpg');
+    await sharp(imagePath).jpeg({ quality: 90 }).toFile(jpegPath);
+    await fs.unlink(imagePath);
+    return jpegPath;
+  }
+
+  async addPhoneExifMetadata(originalImagePath: string, businessData: any): Promise<string> {
     try {
+      const imagePath = await this.ensureJpegFormat(originalImagePath);
+
       await exiftool.write(imagePath, {
         Make: 'Apple',
         Model: 'iPhone 13 Pro',
@@ -26,9 +44,12 @@ export class ExifService {
         GPSAltitude: 15.3,
         Copyright: `© ${businessData.title}, ${new Date().getFullYear()}. All rights reserved.`,
       });
-      console.log('✅ Metadata written to uploaded image');
+
+      console.log('✅ Metadata written to image:', imagePath);
+      return imagePath;
     } catch (error) {
       console.error('❌ Failed to write EXIF metadata:', error);
+      throw error;
     }
   }
 }

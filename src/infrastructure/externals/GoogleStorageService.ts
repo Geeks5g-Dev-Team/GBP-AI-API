@@ -63,4 +63,33 @@ export class GoogleStorageService implements IStorageRepository {
     const bucket = this.storage.bucket(this.bucketName);
     await bucket.file(rootFolder + fileName).rename(rootFolder + newFileName);
   }
+
+  async listImages(folder: string): Promise<string[]> {
+    const bucket = this.storage.bucket(this.bucketName);
+    const [files] = await bucket.getFiles({ prefix: folder });
+
+    const urls = files.map((file) => `https://storage.googleapis.com/${this.bucketName}/${file.name}`);
+    console.log(`📂 [listImages] Fetched ${urls.length} image(s) from folder: ${folder}`);
+    return urls;
+  }
+
+  getRelativePath = (urlOrPath: string): string => {
+    const relative = urlOrPath.replace(`https://storage.googleapis.com/${this.bucketName}/`, '');
+    console.log(`🧭 [getRelativePath] Extracted relative path: ${relative}`);
+    return relative;
+  };
+
+  async deleteImage(path: string): Promise<void> {
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(path);
+
+    const [exists] = await file.exists();
+    if (!exists) {
+      console.warn(`⚠️ [deleteImage] File not found in bucket: ${path}`);
+      throw new Error(`File not found: ${path}`);
+    }
+
+    await file.delete();
+    console.log(`🗑️ [deleteImage] Deleted file: ${path}`);
+  }
 }

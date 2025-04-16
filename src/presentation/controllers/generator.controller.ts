@@ -1,19 +1,22 @@
-import { BadRequestException, Body, Controller, Get, Post, Request, StreamableFile, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
-import { GenerateImageOfServiceDto } from 'src/app/dtos/generate-image-of-service.dto';
-import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
+import { BadRequestException, Body, Controller, Delete, Get, Post, Query, Request, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { SaveImageDTO } from 'src/app/dtos/save-image.dto';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiBody, ApiConsumes } from '@nestjs/swagger';
-import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
 import { randomUUID } from 'crypto';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger';
+
+import { GenerateImageOfServiceDto } from 'src/app/dtos/generate-image-of-service.dto';
+import { SaveImageDTO } from 'src/app/dtos/save-image.dto';
+import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
+import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
+import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 
 @Controller('generator')
 export class GeneratorController {
   constructor(
     private readonly generateImageOfServiceUseCase: GenerateImageOfServiceUseCase,
     private readonly saveImageUseCase: SaveImageUseCase,
+    private readonly storageService: GoogleStorageService,
   ) {}
 
   @Post('image-of-service')
@@ -85,5 +88,43 @@ export class GeneratorController {
     );
 
     return { urls: imageUrls };
+  }
+
+  @Get('list-images')
+  @ApiQuery({ name: 'folder', required: true, description: 'Folder path, e.g., CLIENT_IMAGES/companyId/keyword/' })
+  async listImages(@Query('folder') folder: string): Promise<{ images: string[] }> {
+    const images = await this.storageService.listImages(folder);
+    return { images };
+  }
+
+  @Delete('delete-image')
+  @ApiQuery({ name: 'path', required: true, description: 'Full path of image in bucket, e.g., CLIENT_IMAGES/companyId/keyword/image.jpg' })
+  async deleteImage(@Query('path') path: string): Promise<{ message: string }> {
+    const relativePath = this.storageService.getRelativePath(path);
+    await this.storageService.deleteImage(relativePath);
+    return { message: 'Image deleted successfully' };
+  }
+
+  @Delete('delete-images')
+  async deleteImages(@Query('paths') paths: string): Promise<{ deleted: string[] }> {
+    if (!paths) {
+      throw new BadRequestException('Missing image paths');
+    }
+
+    const decodedPaths = decodeURIComponent(paths)
+      .split(',')
+      .map((p) => this.storageService.getRelativePath(p.trim()));
+
+    const deleted: string[] = [];
+    for (const path of decodedPaths) {
+      try {
+        await this.storageService.deleteImage(path);
+        deleted.push(path);
+      } catch (err) {
+        console.error(`Failed to delete ${path}:`, err.message);
+      }
+    }
+
+    return { deleted };
   }
 }

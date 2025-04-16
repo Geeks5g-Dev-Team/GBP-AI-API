@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { SaveImageDTO } from '../dtos/save-image.dto';
-import { extname } from 'path';
 import { FirestoreService } from '../../infrastructure/externals/firebaseService';
 import { ExifService } from 'src/infrastructure/externals/utils/exif.service';
+import * as sharp from 'sharp';
+import * as path from 'path';
+import * as fs from 'fs-extra';
 
 @Injectable()
 export class SaveImageUseCase {
@@ -27,22 +29,30 @@ export class SaveImageUseCase {
 
     const imageUrls = await Promise.all(
       images.map(async (image) => {
-        const imagePath = image.path;
-        const imageName = image.filename;
+        const originalPath = image.path;
+        const jpegName = `${path.parse(image.filename).name}.jpg`;
+        const jpegPath = path.join(path.dirname(originalPath), jpegName);
 
-        await this.exifService.addPhoneExifMetadata(imagePath, businessData);
+        await sharp(originalPath).jpeg({ quality: 90 }).toFile(jpegPath);
 
-        const finalName = markAsUsed ? imageName.replace(extname(imageName), `_used${extname(imageName)}`) : imageName;
+        if (originalPath !== jpegPath && (await fs.pathExists(originalPath))) {
+          await fs.unlink(originalPath);
+        }
+
+        await this.exifService.addPhoneExifMetadata(jpegPath, businessData);
+
+        const finalName = markAsUsed ? jpegName.replace('.jpg', '_used.jpg') : jpegName;
 
         const uploadPath = await this.storageService.upload({
           fileName: `${companyId}/${keyword}/${finalName}`,
-          filePath: imagePath,
+          filePath: jpegPath,
           rootFolder: 'CLIENT_IMAGES/',
         });
 
         return uploadPath;
       }),
     );
+    console.log('Image URLs:', imageUrls);
     return imageUrls;
   }
 }
