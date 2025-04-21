@@ -18,16 +18,16 @@ export class ExifService {
         Make: 'Apple',
         Model: 'iPhone 13 Pro',
         Software: 'iOS 16.4.1',
-        Artist: businessData.title || 'Unknown',
+        Artist: businessData.name || 'Unknown',
         DateTimeOriginal: this.randomDateInPast30Days(),
         UserComment: businessData.storeFrontAddress?.addressLines?.[0] || 'Unknown address',
         Comment: businessData.storeFrontAddress?.addressLines?.[0] || 'Unknown address',
         ImageDescription: businessData.profile?.description || 'No description available',
         Description: businessData.profile?.description || 'No description available',
-        GPSLatitude: businessData.geometry?.location?.lat || 37.7749,
-        GPSLongitude: businessData.geometry?.location?.lng || -122.4194,
+        GPSLatitude: businessData.latlng?.latitude || 37.7749,
+        GPSLongitude: businessData.latlng?.longitude || -122.4194,
         GPSAltitude: 15.3,
-        Copyright: `© ${businessData.title}, ${new Date().getFullYear()}. All rights reserved.`,
+        Copyright: `© ${businessData.name}, ${new Date().getFullYear()}. All rights reserved.`,
       });
 
       console.log('✅ Metadata written to image:', imagePath);

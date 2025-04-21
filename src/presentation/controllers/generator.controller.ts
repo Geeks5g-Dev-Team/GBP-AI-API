@@ -29,10 +29,10 @@ export class GeneratorController {
   @UseInterceptors(
     FilesInterceptor('images', 10, {
       fileFilter: (req, file, cb) => {
-        const isImage = file.mimetype.startsWith('image/');
-        if (!isImage) {
-          return cb(new BadRequestException('Only image files are allowed!'), false);
-        }
+        // const isImage = file.mimetype.startsWith('image/');
+        // if (!isImage) {
+        //   return cb(new BadRequestException('Only image files are allowed!'), false);
+        // }
         cb(null, true);
       },
       storage: diskStorage({
@@ -113,19 +113,22 @@ export class GeneratorController {
   }
 
   @Delete('delete-images')
-  async deleteImages(@Body('paths') paths: string[]): Promise<{ deleted: string[] }> {
-    if (!paths || !Array.isArray(paths)) {
-      throw new BadRequestException('Missing or invalid image paths array');
+  async deleteImages(@Query('paths') paths: string): Promise<{ deleted: string[] }> {
+    if (!paths) {
+      throw new BadRequestException('Missing image paths');
     }
 
+    const decodedPaths = decodeURIComponent(paths)
+      .split(',')
+      .map((p) => this.storageService.getRelativePath(p.trim()));
+
     const deleted: string[] = [];
-    for (const rawPath of paths) {
-      const path = this.storageService.getRelativePath(rawPath);
+    for (const path of decodedPaths) {
       try {
         await this.storageService.deleteImage(path);
         deleted.push(path);
       } catch (err) {
-        console.error(`❌ Failed to delete ${path}:`, err.message);
+        console.error(`Failed to delete ${path}:`, err.message);
       }
     }
 

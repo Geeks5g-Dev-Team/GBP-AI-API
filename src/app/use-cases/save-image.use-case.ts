@@ -6,6 +6,7 @@ import * as sharp from 'sharp';
 import * as fs from 'fs-extra';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 import { ExifService } from 'src/infrastructure/externals/utils/exif.service';
+import axios from 'axios';
 
 @Injectable()
 export class SaveImageUseCase {
@@ -21,7 +22,18 @@ export class SaveImageUseCase {
     if (!companyId || !keyword) throw new Error('Company name and keyword are required');
     if (!images || images.length === 0) throw new Error('At least one image is required');
 
-    const businessData = await this.firestoreService.getDocument('businesses', companyId);
+    const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:3000';
+
+    let businessData: any;
+    try {
+      const response = await axios.get(`${NEST_API_URL}/businesses/${companyId}`);
+      businessData = response.data?.gmbData;
+      if (!businessData) throw new Error('Missing gmbData from user record');
+    } catch (error) {
+      console.error('Error fetching user from Nest API:', error);
+      throw new Error('Failed to retrieve business data');
+    }
+    console.log('Business data:', businessData);
     const imageUrls: string[] = [];
 
     for (const image of images) {

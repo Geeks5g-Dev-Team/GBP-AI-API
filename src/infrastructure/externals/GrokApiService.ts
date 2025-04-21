@@ -65,7 +65,18 @@ export class GrokService implements IIAGeneratorRepository {
       // Get image metadata
       const metadata = await sharp(tempDownloadPath).metadata();
 
-      const businessData = await this.firestoreService.getDocument('businesses', locationId);
+      const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:3000';
+
+      let businessData: any;
+      try {
+        const response = await axios.get(`${NEST_API_URL}/businesses/${locationId}`);
+        businessData = response.data?.gmbData;
+        if (!businessData) throw new Error('Missing gmbData from user record');
+      } catch (error) {
+        console.error('Error fetching user from Nest API:', error);
+        throw new Error('Failed to retrieve business data');
+      }
+      console.log('Business data:', businessData);
 
       // Crop image
       await sharp(tempDownloadPath)

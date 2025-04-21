@@ -5,6 +5,7 @@ import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
+import axios from 'axios';
 
 @Injectable()
 export class GenerateImageOfServiceUseCase {
@@ -104,7 +105,19 @@ export class GenerateImageOfServiceUseCase {
   }
 
   private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, company: string, service: string): Promise<[string, string, string]> {
-    const businessData = await this.firestoreService.getDocument('businesses', data.companyId);
+    const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:3000';
+
+    let businessData: any;
+    try {
+      const response = await axios.get(`${NEST_API_URL}/businesses/${data.companyId}`);
+      businessData = response.data?.gmbData;
+      if (!businessData) throw new Error('Missing gmbData from user record');
+    } catch (error) {
+      console.error('Error fetching user from Nest API:', error);
+      throw new Error('Failed to retrieve business data');
+    }
+    console.log('Business data:', businessData);
+
     const dataTransfored: dataTemplate = {
       country: businessData.serviceArea?.places?.placeInfos[0]?.placeName || '',
       mainService: businessData.title || '',
