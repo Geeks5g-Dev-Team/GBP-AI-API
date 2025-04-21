@@ -17,6 +17,7 @@ export const appConfig = {
     origin: (origin, callback) => {
       const allowedOrigins = [
         /^http:\/\/localhost(:\d+)?$/,
+        /^https:\/\/googlerankai\.vercel\.app(:\d+)?$/,
         // /^https:\/\/html.onlineviewer.net$/, // ✅ new origin
       ];
 
