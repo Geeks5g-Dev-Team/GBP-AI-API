@@ -7,6 +7,19 @@ import * as fs from 'fs-extra';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 import { ExifService } from 'src/infrastructure/externals/utils/exif.service';
 import axios from 'axios';
+import * as heicConvert from 'heic-convert';
+
+async function convertHeicToJpg(inputPath: string, outputPath: string) {
+  const inputBuffer = await fs.readFile(inputPath);
+
+  const outputBuffer = await heicConvert({
+    buffer: inputBuffer,
+    format: 'JPEG',
+    quality: 0.9,
+  });
+
+  fs.writeFile(outputPath, Buffer.from(outputBuffer));
+}
 
 @Injectable()
 export class SaveImageUseCase {
@@ -44,7 +57,11 @@ export class SaveImageUseCase {
       const jpegName = `${parsed.name}_${uniqueSuffix}.jpg`;
       const jpegPath = join(parsed.dir, jpegName);
 
-      await sharp(originalPath).jpeg({ quality: 90 }).toFile(jpegPath);
+      if (/\.(heic|heif)$/i.test(originalPath)) {
+        await convertHeicToJpg(originalPath, jpegPath);
+      } else {
+        await sharp(originalPath).jpeg({ quality: 90 }).toFile(jpegPath);
+      }
 
       if (await fs.pathExists(originalPath)) {
         await fs.unlink(originalPath);

@@ -1,15 +1,16 @@
-import { BadRequestException, Body, Controller, Delete, Get, Post, Query, Request, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Request, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiQuery } from '@nestjs/swagger';
-
 import { GenerateImageOfServiceDto } from 'src/app/dtos/generate-image-of-service.dto';
 import { SaveImageDTO } from 'src/app/dtos/save-image.dto';
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
 import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { GoogleDriveService } from 'src/infrastructure/externals/GoogleDriveService';
+import { DropboxService } from 'src/infrastructure/externals/DropboxService';
 
 @Controller('generator')
 export class GeneratorController {
@@ -17,6 +18,8 @@ export class GeneratorController {
     private readonly generateImageOfServiceUseCase: GenerateImageOfServiceUseCase,
     private readonly saveImageUseCase: SaveImageUseCase,
     private readonly storageService: GoogleStorageService,
+    private readonly googleDriveService: GoogleDriveService,
+    private readonly dropboxService: DropboxService,
   ) {}
 
   @Post('image-of-service')
@@ -130,5 +133,40 @@ export class GeneratorController {
     }
 
     return { deleted };
+  }
+
+  @Get('drive/:accountId')
+  async getDriveFiles(@Param('accountId') accountId: string) {
+    return this.googleDriveService.getFiles(accountId);
+  }
+
+  @Post('drive/:accountId')
+  async saveDriveImages(@Param('accountId') accountId: string, @Body() dto: SaveImageDTO & { driveFileIds: string[] }) {
+    const imageUrls = await this.googleDriveService.saveDriveFiles(accountId, dto);
+    return { urls: imageUrls };
+  }
+
+  @Get('dropbox/auth')
+  getDropboxAuthUrl(@Query('userId') userId: string) {
+    return { url: this.dropboxService.getAuthUrl(userId) };
+  }
+
+  @Get('dropbox/auth/callback')
+  async handleCallback(@Query('code') code: string, @Query('state') state: string) {
+    const userId = state;
+    const tokenData = await this.dropboxService.exchangeCode(code);
+    await this.dropboxService.storeDropboxToken(userId, tokenData);
+    return { success: true };
+  }
+
+  @Get('dropbox/files/:accountId')
+  async getDropboxFiles(@Param('accountId') accountId: string) {
+    return this.dropboxService.getFiles(accountId);
+  }
+
+  @Post('dropbox/files/:accountId')
+  async saveDropboxFiles(@Param('accountId') accountId: string, @Body() dto: SaveImageDTO & { paths: string[] }) {
+    const imageUrls = await this.dropboxService.saveDropboxFiles(accountId, dto);
+    return { urls: imageUrls };
   }
 }

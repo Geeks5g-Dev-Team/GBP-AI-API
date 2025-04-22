@@ -14,6 +14,8 @@ import { FirebaseModule } from './firebase/firebase.module';
 import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 import OpenAI from 'openai';
 import { ExifService } from '../infrastructure/externals/utils/exif.service';
+import { GoogleDriveService } from 'src/infrastructure/externals/GoogleDriveService';
+import { DropboxService } from 'src/infrastructure/externals/DropboxService';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { ExifService } from '../infrastructure/externals/utils/exif.service';
     GenerateImageOfServiceUseCase,
     SaveImageUseCase,
     ExifService,
+    GoogleDriveService,
+    DropboxService,
     {
       provide: GrokService,
       useFactory: (configService: ConfigService, firestoreService: FirestoreService, exifService: ExifService) => {
