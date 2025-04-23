@@ -30,13 +30,13 @@
             window.opener.postMessage({ success: true, ...data }, '*');
           }
 
-          setTimeout(() => window.close(), 1500);
+          // setTimeout(() => window.close(), 1500);
         } catch (err) {
           console.error('OAuth Bridge Error:', err);
           if (window.opener) {
             window.opener.postMessage({ success: false, error: err.message }, '*');
           }
-          setTimeout(() => window.close(), 2000);
+          // setTimeout(() => window.close(), 2000);
         }
       })();
     </script>
