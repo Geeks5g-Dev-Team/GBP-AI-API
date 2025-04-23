@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Dropbox OAuth Bridge</title>
+  </head>
+  <body>
+    <p>Connecting Dropbox...</p>
+    <script>
+      (async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        if (!code || !state) {
+          alert('Missing code or state');
+          window.close();
+          return;
+        }
+
+        try {
+          const res = await fetch('http://localhost:3002/v1/generator/dropbox/auth/callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, state }),
+          });
+
+          const data = await res.json();
+
+          if (window.opener) {
+            window.opener.postMessage({ success: true, ...data }, '*');
+          }
+
+          setTimeout(() => window.close(), 1500);
+        } catch (err) {
+          console.error('OAuth Bridge Error:', err);
+          if (window.opener) {
+            window.opener.postMessage({ success: false, error: err.message }, '*');
+          }
+          setTimeout(() => window.close(), 2000);
+        }
+      })();
+    </script>
+  </body>
+</html>

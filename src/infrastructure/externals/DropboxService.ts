@@ -99,11 +99,13 @@ export class DropboxService {
         connectedAccounts.push(newConnectedAccount);
       }
 
-      await axios.patch(`${this.NEST_API_URL}/users/${accountId}`, {
+      const patchRes = await axios.patch(`${this.NEST_API_URL}/users/${accountId}`, {
         connectedAccounts,
       });
 
+      const jwt = patchRes.data?.token || '';
       console.log(`✅ Dropbox token ${existingIndex >= 0 ? 'updated' : 'added'} for user ${accountId}`);
+      return jwt;
     } catch (error) {
       console.error('❌ Failed to update connectedAccounts:', error.response?.data || error.message);
       throw new Error('Could not update user with Dropbox token');

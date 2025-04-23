@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Request, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Request, UploadedFiles, UseInterceptors, Res } from '@nestjs/common';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
@@ -32,10 +32,10 @@ export class GeneratorController {
   @UseInterceptors(
     FilesInterceptor('images', 10, {
       fileFilter: (req, file, cb) => {
-        const isImage = file.mimetype.startsWith('image/');
-        if (!isImage) {
-          return cb(new BadRequestException('Only image files are allowed!'), false);
-        }
+        // const isImage = file.mimetype.startsWith('image/');
+        // if (!isImage) {
+        //   return cb(new BadRequestException('Only image files are allowed!'), false);
+        // }
         cb(null, true);
       },
       storage: diskStorage({
@@ -151,12 +151,14 @@ export class GeneratorController {
     return { url: this.dropboxService.getAuthUrl(userId) };
   }
 
-  @Get('dropbox/auth/callback')
-  async handleCallback(@Query('code') code: string, @Query('state') state: string) {
-    const userId = state;
+  @Post('dropbox/auth/callback')
+  async handleDropboxCallback(@Body() body: { code: string; state: string }) {
+    const { code, state: userId } = body;
+
     const tokenData = await this.dropboxService.exchangeCode(code);
-    await this.dropboxService.storeDropboxToken(userId, tokenData);
-    return { success: true };
+    const jwt = await this.dropboxService.storeDropboxToken(userId, tokenData);
+
+    return { token: jwt, connectedAccounts: [{ provider: 'dropbox' }] };
   }
 
   @Get('dropbox/files/:accountId')
