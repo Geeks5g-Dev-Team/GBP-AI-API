@@ -19,6 +19,7 @@ export const appConfig = {
         /^http:\/\/localhost(:\d+)?$/,
         /^https:\/\/googlerankai\.vercel\.app(:\d+)?$/,
         // /^https:\/\/html.onlineviewer.net$/, // ✅ new origin
+        /^https:\/\/gbp-ai-api\.onrender\.com(:\d+)?$/,
       ];
 
       if (!origin || allowedOrigins.some((regex) => regex.test(origin))) {
