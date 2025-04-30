@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Query, Request, UploadedFiles, UseInterceptors, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';

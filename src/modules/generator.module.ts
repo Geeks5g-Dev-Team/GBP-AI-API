@@ -42,14 +42,14 @@ import { DropboxService } from 'src/infrastructure/externals/DropboxService';
     DropboxService,
     {
       provide: GrokService,
-      useFactory: (configService: ConfigService, firestoreService: FirestoreService, exifService: ExifService) => {
+      useFactory: (configService: ConfigService, exifService: ExifService) => {
         const apiKey = configService.get<string>('GROK_API_KEY');
         if (!apiKey) {
           throw new Error('GROK_API_KEY is not defined');
         }
-        return new GrokService(apiKey, 'images_grok', firestoreService, exifService);
+        return new GrokService(apiKey, 'images_grok', exifService);
       },
-      inject: [ConfigService, FirestoreService, ExifService],
+      inject: [ConfigService, ExifService],
     },
     {
       provide: OpenAiService,

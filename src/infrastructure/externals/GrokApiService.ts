@@ -14,7 +14,6 @@ export class GrokService implements IIAGeneratorRepository {
   constructor(
     private readonly apiKey: string,
     private readonly downloadPath: string,
-    private readonly firestoreService: FirestoreService,
     private readonly exifService: ExifService,
   ) {
     this.model = 'grok-2-image';

@@ -18,15 +18,18 @@ export const appConfig = {
       const allowedOrigins = [
         /^http:\/\/localhost(:\d+)?$/,
         /^https:\/\/googlerankai\.vercel\.app(:\d+)?$/,
-        // /^https:\/\/html.onlineviewer.net$/, // ✅ new origin
+        /^https:\/\/html.onlineviewer.net$/, // ✅ new origin
         /^https:\/\/gbp-ai-api\.onrender\.com(:\d+)?$/,
       ];
 
-      if (!origin || allowedOrigins.some((regex) => regex.test(origin))) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.log('CORS origin check:', origin);
+
+      // if (!origin || allowedOrigins.some((regex) => regex.test(origin))) {
+      //   callback(null, true);
+      // } else {
+      //   callback(new Error('Not allowed by CORS'));
+      // }
+      callback(null, true);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],

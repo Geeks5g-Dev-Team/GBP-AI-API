@@ -45,6 +45,27 @@ export class GoogleStorageService implements IStorageRepository {
     return `https://storage.googleapis.com/${this.bucketName}/${files[0].name}`;
   }
 
+  async listFolders(params: { prefix: string; rootFolder: string }): Promise<string[]> {
+    const { prefix, rootFolder } = params;
+    const bucket = this.storage.bucket(this.bucketName);
+    const fullPrefix = `${rootFolder}${prefix}`.replace(/\/+$/, '') + '/'; // ensure single trailing slash
+
+    const [files, , apiResponse] = await bucket.getFiles({
+      prefix: fullPrefix,
+      delimiter: '/',
+      autoPaginate: false,
+    });
+
+    const prefixes = (apiResponse as { prefixes?: string[] }).prefixes || [];
+    const folders = prefixes.map((p) => {
+      const relative = p.replace(fullPrefix, '').replace(/\/$/, ''); // remove root prefix and trailing slash
+      return relative;
+    });
+
+    console.log(`📂 listFolders: Found folders under "${fullPrefix}":`, folders);
+    return folders;
+  }
+
   async getImages(params: IStorageRepositoryGetImagesOptions): Promise<string[]> {
     const { prefix, rootFolder } = params;
     const bucket = this.storage.bucket(this.bucketName);

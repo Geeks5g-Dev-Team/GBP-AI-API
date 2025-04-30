@@ -22,7 +22,7 @@ export class OpenAiService {
 
             You will generate:
             1. A structured prompt (not the actual post) that can be used to later generate a 100–130 word GBP post.
-            2. A Grok-compatible image prompt (based on a default image prompt and business context).
+            2. A DallE-compatible image prompt (based on a default image prompt and business context).
 
             Both outputs must:
             - Use the exact same keyword: "${keyword}"
@@ -39,7 +39,7 @@ export class OpenAiService {
             The imagePrompt must:
             - Be a finalized AI prompt for a photorealistic image
             - Describe a realistic, human-centered scene related to "${keyword}" (Max 2 people)
-            - Be Grok-compatible (no text or logos)
+            - Be DallE-compatible (no text or logos)
             - Use the provided businessData to ground the scene in the correct type of business, location, and environment
             - Include contextual visual elements like tools, settings, lighting, or client interaction
 

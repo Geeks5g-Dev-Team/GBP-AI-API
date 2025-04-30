@@ -4,7 +4,6 @@ import { buildPromptFromTemplate, dataTemplate } from '../builders/prompt.builde
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
-import { FirestoreService } from 'src/infrastructure/externals/firebaseService';
 import axios from 'axios';
 
 @Injectable()
@@ -15,38 +14,34 @@ export class GenerateImageOfServiceUseCase {
     private readonly grokService: GrokService,
     private readonly openAiService: OpenAiService,
     private readonly storageService: GoogleStorageService,
-    private readonly firestoreService: FirestoreService,
   ) {}
 
   async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
     this.validateInput(data);
 
-    const { companyId, keyword, numberOfImages } = data;
-    const sanitizedCompany = this.sanitizeName(companyId);
+    const { companyId, keyword } = data;
     const sanitizedKeyword = this.sanitizeName(keyword);
 
     // 1. Check for unused client-uploaded images
-    const clientImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedKeyword, 'CLIENT_IMAGES/');
+    const clientImageResult = await this.findAndProcessUnusedImage(companyId, 'CLIENT_IMAGES/');
     if (clientImageResult) {
-      this.logger.log(`Using client-provided image for ${sanitizedCompany}/${sanitizedKeyword}`);
-      return clientImageResult;
+      const [keyword, imageUrl, downloadPath] = clientImageResult;
+      console.log('clientImageResult', clientImageResult);
+      this.logger.log(`Using client-provided image for ${companyId}/${keyword}`);
+      return ['', imageUrl, downloadPath];
     }
 
     // 2. Check for unused AI-generated images
-    const iaImageResult = await this.findAndProcessUnusedImage(sanitizedCompany, sanitizedKeyword, 'IA_IMAGES/');
-    if (iaImageResult) {
-      this.logger.log(`Using AI-generated image for ${sanitizedCompany}/${sanitizedKeyword}`);
-      return iaImageResult;
-    }
-
-    if (iaImageResult) {
-      this.logger.log(`Using existing AI-generated image for ${sanitizedCompany}/${sanitizedKeyword}`);
-      return iaImageResult;
+    const aiImageResult = await this.findAndProcessUnusedImage(companyId, 'IA_IMAGES/');
+    if (aiImageResult) {
+      const [keyword, imageUrl, downloadPath] = aiImageResult;
+      this.logger.log(`Using AI-generated image for ${companyId}/${keyword}`);
+      return ['', imageUrl, downloadPath];
     }
 
     // 3. Generate new image
-    this.logger.log(`Generating new image for ${sanitizedCompany}/${sanitizedKeyword}`);
-    return this.generateAndUploadNewImage(data, sanitizedCompany, sanitizedKeyword);
+    this.logger.log(`Generating new image for ${companyId}/${sanitizedKeyword}`);
+    return this.generateAndUploadNewImage(data, sanitizedKeyword);
   }
 
   private validateInput(data: GenerateImageOfServiceDto): void {
@@ -60,41 +55,56 @@ export class GenerateImageOfServiceUseCase {
     return name.toLowerCase().replace(/[^a-z0-9]/g, '_');
   }
 
-  private async findAndProcessUnusedImage(company: string, service: string, rootFolder: string): Promise<[string, string, string] | null> {
-    const [hasUnusedImages, unusedImages] = await this.findUnusedImages(company, service, rootFolder);
+  private async findAndProcessUnusedImage(company: string, rootFolder: string): Promise<[string, string, string] | null> {
+    const [hasUnusedImages, keyword, imageUrl] = await this.findUnusedImage(company, rootFolder);
 
-    if (!hasUnusedImages) {
+    if (!hasUnusedImages || !imageUrl || !keyword) {
       return null;
     }
 
-    const imagePath = unusedImages[0];
-    const imageName = imagePath.split('/').pop() || 'image.jpg';
+    const imageName = imageUrl.split('/').pop() || 'image.jpg';
 
-    // Mark image as used by renaming
+    // Generate renamed (used) version
     const usedImageName = this.getUsedImageName(imageName);
-    await this.storageService.renameFile({
-      fileName: `${company}/${service}/${imageName}`,
-      newFileName: `${company}/${service}/${usedImageName}`,
-      rootFolder,
-    });
-    // Download the image
-    const downloadPath = await this.storageService.download({
-      fileName: `${company}/${service}/${usedImageName}`,
-      rootFolder,
-    });
-    this.logger.log(`Marked image as used: ${rootFolder}/${company}/${service}/${usedImageName}`);
 
-    return ['', imagePath, downloadPath];
+    // Rename the file in storage to mark it as used
+    await this.storageService.renameFile({
+      fileName: `${company}/${keyword}/${imageName}`,
+      newFileName: `${company}/${keyword}/${usedImageName}`,
+      rootFolder,
+    });
+
+    // Download the renamed image
+    const downloadPath = await this.storageService.download({
+      fileName: `${company}/${keyword}/${usedImageName}`,
+      rootFolder,
+    });
+
+    this.logger.log(`✅ Marked image as used: ${rootFolder}${company}/${keyword}/${usedImageName}`);
+
+    // Return keyword (folder), original image URL, and downloaded path
+    return [keyword, imageUrl, downloadPath];
   }
 
-  private async findUnusedImages(company: string, service: string, rootFolder: string): Promise<[boolean, string[]]> {
-    const images = await this.storageService.getImages({
-      prefix: `${company}/${service}/`,
-      rootFolder,
-    });
+  private async findUnusedImage(company: string, rootFolder: string): Promise<[boolean, string | null, string | null]> {
+    const prefix = `${company}/`;
+    const serviceFolders = await this.storageService.listFolders({ prefix, rootFolder });
+    console.log('serviceFolders', serviceFolders);
 
-    const unusedImages = images.filter((image) => !image.includes('_used.jpg'));
-    return [unusedImages.length > 0, unusedImages];
+    for (const folder of serviceFolders) {
+      const servicePrefix = `${prefix}${folder}/`;
+      const images = await this.storageService.getImages({
+        prefix: servicePrefix,
+        rootFolder,
+      });
+
+      const unusedImage = images.find((image) => !image.includes('_used.jpg'));
+      if (unusedImage) {
+        return [true, folder, unusedImage];
+      }
+    }
+
+    return [false, null, null]; // No unused images found
   }
 
   private getUsedImageName(imageName: string): string {
@@ -104,38 +114,50 @@ export class GenerateImageOfServiceUseCase {
     return imageName.replace('.jpg', '_used.jpg');
   }
 
-  private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, company: string, service: string): Promise<[string, string, string]> {
+  private async getPrompts(data: GenerateImageOfServiceDto, service: string): Promise<[string, string]> {
     const NEST_API_URL = process.env.NEST_API_URL || 'http://localhost:3000';
 
     let businessData: any;
     try {
       const response = await axios.get(`${NEST_API_URL}/businesses/${data.companyId}`);
-      businessData = response.data?.gmbData;
-      if (!businessData) throw new Error('Missing gmbData from user record');
+      businessData = response.data;
+      if (!businessData) throw new Error('Missing business data from user record');
     } catch (error) {
       console.error('Error fetching user from Nest API:', error);
       throw new Error('Failed to retrieve business data');
     }
-    console.log('Business data:', businessData);
 
     const dataTransfored: dataTemplate = {
-      country: businessData.serviceArea?.places?.placeInfos[0]?.placeName || '',
-      mainService: businessData.title || '',
+      country: businessData.gmbData.serviceArea?.places?.placeInfos[0]?.placeName || '',
+      mainService: businessData.gmbData.title || '',
       businessType: service || '',
       keyword: data.keyword || '',
     };
+
     const rawPrompt = buildPromptFromTemplate(dataTransfored);
     console.log('Prompt:', rawPrompt);
     const { postPrompt, imagePrompt } = await this.openAiService.generatePostAndImagePrompts(rawPrompt, data.keyword, businessData);
     console.log('Post Prompt:', postPrompt);
     console.log('Improved Prompt:', imagePrompt);
+
+    if (businessData.imagePrompt && businessData.imagePrompt.trim() !== '') {
+      console.log('✅ Using stored imagePrompt from database');
+      return [postPrompt, businessData.imagePrompt];
+    } else {
+      console.log('❌ No stored imagePrompt found in database');
+      return [postPrompt, imagePrompt];
+    }
+  }
+
+  private async generateAndUploadNewImage(data: GenerateImageOfServiceDto, service: string): Promise<[string, string, string]> {
+    const [postPrompt, imagePrompt] = await this.getPrompts(data, service);
     const localImagePath = await this.grokService.generateImage(imagePrompt, data.numberOfImages, data.companyId);
 
     const imageName = this.extractFileName(localImagePath);
 
     // Upload the newly generated image
     const uploadPath = await this.storageService.upload({
-      fileName: `${company}/${service}/${imageName}`,
+      fileName: `${data.companyId}/${service}/${imageName}`,
       filePath: localImagePath,
       rootFolder: 'IA_IMAGES/',
     });
