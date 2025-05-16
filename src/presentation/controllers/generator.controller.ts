@@ -9,7 +9,7 @@ import { GenerateImageOfServiceDto } from 'src/app/dtos/generate-image-of-servic
 import { SaveImageDTO } from 'src/app/dtos/save-image.dto';
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
 import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
-import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { S3StorageService } from 'src/infrastructure/externals/S3StorageService';
 import { GoogleDriveService } from 'src/infrastructure/externals/GoogleDriveService';
 import { DropboxService } from 'src/infrastructure/externals/DropboxService';
 
@@ -18,7 +18,7 @@ export class GeneratorController {
   constructor(
     private readonly generateImageOfServiceUseCase: GenerateImageOfServiceUseCase,
     private readonly saveImageUseCase: SaveImageUseCase,
-    private readonly storageService: GoogleStorageService,
+    private readonly storageService: S3StorageService,
     private readonly googleDriveService: GoogleDriveService,
     private readonly dropboxService: DropboxService,
   ) {}

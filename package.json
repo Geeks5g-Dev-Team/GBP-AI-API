@@ -21,6 +21,7 @@
     "format:linebreak": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" --end-of-line lf"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.810.0",
     "@google-cloud/storage": "^7.15.2",
     "@nestjs/common": "^11.0.16",
     "@nestjs/config": "^4.0.2",

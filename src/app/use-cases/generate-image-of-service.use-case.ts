@@ -3,7 +3,7 @@ import { GenerateImageOfServiceDto } from '../dtos/generate-image-of-service.dto
 import { buildPromptFromTemplate, dataTemplate } from '../builders/prompt.builder';
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
-import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { S3StorageService } from 'src/infrastructure/externals/S3StorageService';
 import axios from 'axios';
 
 @Injectable()
@@ -13,7 +13,7 @@ export class GenerateImageOfServiceUseCase {
   constructor(
     private readonly grokService: GrokService,
     private readonly openAiService: OpenAiService,
-    private readonly storageService: GoogleStorageService,
+    private readonly storageService: S3StorageService,
   ) {}
 
   async execute(data: GenerateImageOfServiceDto): Promise<[string, string, string]> {
@@ -159,7 +159,7 @@ export class GenerateImageOfServiceUseCase {
     const uploadPath = await this.storageService.upload({
       fileName: `${data.companyId}/${service}/${imageName}`,
       filePath: localImagePath,
-      rootFolder: 'IA_IMAGES/',
+      rootFolder: 'AI_IMAGES/',
     });
 
     // // Mark the newly uploaded image as used

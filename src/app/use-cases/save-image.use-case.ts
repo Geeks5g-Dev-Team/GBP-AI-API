@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { S3StorageService } from 'src/infrastructure/externals/S3StorageService';
 import { SaveImageDTO } from '../dtos/save-image.dto';
 import { parse, join } from 'path';
 import * as sharp from 'sharp';
@@ -24,7 +24,7 @@ async function convertHeicToJpg(inputPath: string, outputPath: string) {
 @Injectable()
 export class SaveImageUseCase {
   constructor(
-    private readonly storageService: GoogleStorageService,
+    private readonly storageService: S3StorageService,
     private readonly firestoreService: FirestoreService,
     private readonly exifService: ExifService,
   ) {}

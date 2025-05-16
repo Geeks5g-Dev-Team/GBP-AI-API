@@ -1,12 +1,13 @@
-import { Storage } from '@google-cloud/storage';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { S3Client } from '@aws-sdk/client-s3'; // ✅ S3 SDK import
+
 import { GenerateImageOfServiceUseCase } from 'src/app/use-cases/generate-image-of-service.use-case';
 import { SaveImageUseCase } from 'src/app/use-cases/save-image.use-case';
-import { GoogleStorageService } from 'src/infrastructure/externals/GoogleStorageService';
+import { S3StorageService } from 'src/infrastructure/externals/S3StorageService'; // ✅ your new S3-based class
 import { GrokService } from 'src/infrastructure/externals/GrokApiService';
 import { OpenAiService } from 'src/infrastructure/externals/OpenAiApiService';
 import { GeneratorController } from 'src/presentation/controllers/generator.controller';
@@ -40,6 +41,8 @@ import { DropboxService } from 'src/infrastructure/externals/DropboxService';
     ExifService,
     GoogleDriveService,
     DropboxService,
+
+    // ✅ GrokService Provider
     {
       provide: GrokService,
       useFactory: (configService: ConfigService, exifService: ExifService) => {
@@ -51,6 +54,8 @@ import { DropboxService } from 'src/infrastructure/externals/DropboxService';
       },
       inject: [ConfigService, ExifService],
     },
+
+    // ✅ OpenAI Provider
     {
       provide: OpenAiService,
       useFactory: (configService: ConfigService) => {
@@ -63,25 +68,33 @@ import { DropboxService } from 'src/infrastructure/externals/DropboxService';
       },
       inject: [ConfigService],
     },
+
+    // ✅ S3StorageService Provider
     {
-      provide: GoogleStorageService,
+      provide: S3StorageService,
       useFactory: (configService: ConfigService) => {
-        const googleCredentials = configService.get<string>('GOOGLE_APPLICATION_CREDENTIALS');
-        const bucketName = configService.get<string>('GOOGLE_BUCKET_NAME');
-        if (!googleCredentials) {
-          throw new Error('GOOGLE_APPLICATION_CREDENTIALS is not defined');
+        const bucketName = configService.get<string>('AWS_BUCKET_NAME');
+        const region = configService.get<string>('AWS_REGION');
+        const accessKeyId = configService.get<string>('AWS_ACCESS_KEY_ID');
+        const secretAccessKey = configService.get<string>('AWS_SECRET_ACCESS_KEY');
+
+        if (!bucketName || !region || !accessKeyId || !secretAccessKey) {
+          throw new Error('Missing AWS S3 configuration');
         }
-        if (!bucketName) {
-          throw new Error('GOOGLE_BUCKET_NAME is not defined');
-        }
-        const storage = new Storage({
-          keyFile: googleCredentials,
+
+        const s3Client = new S3Client({
+          region,
+          credentials: {
+            accessKeyId,
+            secretAccessKey,
+          },
         });
-        return new GoogleStorageService(storage, bucketName);
+
+        return new S3StorageService(s3Client, bucketName);
       },
       inject: [ConfigService],
     },
   ],
-  exports: [GrokService, GoogleStorageService],
+  exports: [GrokService, S3StorageService], // ✅ Export S3 instead of Google
 })
 export class GeneratorModule {}
